@@ -10,8 +10,9 @@ const TokenChart = ({ pair }) => {
     );
   }
 
-  const baseTokenSymbol = (pair.pair?.[0]?.tokenSymbol || "BTC").toUpperCase();
-  const tradingViewSymbol = baseTokenSymbol + "USD";
+  const rawSymbol = (pair.pair?.[0]?.tokenSymbol || "BTC");
+  const cleanSymbol = rawSymbol.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  const tradingViewSymbol = cleanSymbol + "USD";
 
   return (
     <div className="h-full flex flex-col">

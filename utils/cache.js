@@ -39,8 +39,11 @@ export async function cachedFetch(cacheKey, url, ttl = CACHE_TTL) {
   // Check cache first
   const item = cache.get(cacheKey);
   if (item && Date.now() - item.timestamp < ttl) {
+    console.log("CACHE HIT:", cacheKey);
     return item.data;
   }
+
+  console.log("CACHE MISS:", cacheKey, "→ fetching:", url);
 
   // Try fetching
   const attempt = async () => {
@@ -55,6 +58,7 @@ export async function cachedFetch(cacheKey, url, ttl = CACHE_TTL) {
   try {
     const data = await attempt();
     setCache(cacheKey, data);
+    console.log("CACHE SET:", cacheKey);
     return data;
   } catch (err) {
     const status = parseInt(err.message);
