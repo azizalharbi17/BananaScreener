@@ -55,9 +55,9 @@ const TokenInfo = ({ token, pair, network }) => {
   const telegramHandle = details.telegram_handle;
   const discordUrl = details.discord_url;
   const imageUrl = details.image_url || tokenMetadata?.image_url || token.logo;
-  const holders = details.holders;
+  const holderCount = typeof details.holders === "object" ? details.holders?.count : details.holders;
   const categories = details.categories || [];
-  const gtScore = details.gt_score;
+  const gtScore = typeof details.gt_score === "number" ? details.gt_score.toFixed(1) : details.gt_score;
 
   const getTimePeriodData = (period) => {
     const api = timeFrameMap[period] || "24h";
@@ -119,10 +119,12 @@ const TokenInfo = ({ token, pair, network }) => {
         )}
 
         {/* GT Score + Holders */}
-        <div className="flex items-center gap-3 mb-2">
-          {gtScore && <span className="text-xs bg-dex-bg-tertiary px-2 py-0.5 rounded">Score: {gtScore}/100</span>}
-          {holders && <span className="text-xs text-dex-text-secondary">{formatNumber(holders)} holders</span>}
-        </div>
+        {(gtScore || holderCount) && (
+          <div className="flex flex-col gap-1 mb-2">
+            {gtScore && <span className="text-xs text-dex-text-secondary">GT Score: <span className="text-dex-text-primary font-medium">{gtScore}</span>/100</span>}
+            {holderCount && <span className="text-xs text-dex-text-secondary">Holders: <span className="text-dex-text-primary font-medium">{formatNumber(holderCount)}</span></span>}
+          </div>
+        )}
 
         {/* Social Links */}
         <div className="flex flex-wrap gap-2">
