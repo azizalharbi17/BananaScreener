@@ -55,3 +55,8 @@ export async function getTokenInfo(network, tokenAddress) {
   const data = await fetchApi(`/token-info?network=${network}&tokenAddress=${tokenAddress}`);
   return data.data?.attributes || null;
 }
+
+export async function getTokenDetails(network, tokenAddress) {
+  const data = await fetchApi(`/token-details?network=${network}&tokenAddress=${tokenAddress}`);
+  return data.data?.attributes || null;
+}

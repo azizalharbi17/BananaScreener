@@ -8,6 +8,8 @@ import TokenInfo from "@/components/token/TokenInfo";
 import TokenTabs from "@/components/token/TokenTabs";
 import PairSelector from "@/components/token/PairSelector";
 import TokenTransactions from "@/components/token/TokenTransactions";
+import TopTraders from "@/components/token/TopTraders";
+import BananaMapsTab from "@/components/token/BananaMapsTab";
 import { getTokenPools } from "@/utils/api";
 import { PATH_TO_GT_NETWORK } from "@/utils/networks";
 
@@ -111,6 +113,12 @@ export default function TokenPage() {
         <div className="flex-1 overflow-auto">
           {activeTab === "transactions" && (
             <TokenTransactions pair={selectedPair} network={network} />
+          )}
+          {activeTab === "top-traders" && (
+            <TopTraders pair={selectedPair} network={network} />
+          )}
+          {activeTab === "bananamaps" && (
+            <BananaMapsTab token={tokenInfo} network={network} />
           )}
         </div>
       </div>
