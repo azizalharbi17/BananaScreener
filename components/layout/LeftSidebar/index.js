@@ -6,7 +6,7 @@ import ChainSelector from "./ChainSelector";
 
 const LeftSidebar = ({ openSearchModal }) => {
   return (
-    <div className="w-64 bg-dex-bg-secondary text-dex-text-primary flex flex-col border-r border-dex-border h-screen sticky top-0 overflow-y-auto">
+    <div className="w-[17rem] bg-dex-bg-secondary text-dex-text-primary flex flex-col border-r border-dex-border h-screen sticky top-0 overflow-y-auto">
       <div className="p-4 flex-1">
         <Link href="/" className="block">
           <span className="flex flex-col">

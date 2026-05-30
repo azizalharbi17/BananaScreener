@@ -8,6 +8,7 @@ const TokenTransactions = ({ pair, network }) => {
   const [loading, setLoading] = useState(true);
   const [newTxIds, setNewTxIds] = useState(new Set());
   const [tableHeight, setTableHeight] = useState(400);
+  const [error, setError] = useState(null);
   const pollRef = useRef(null);
   const resizeRef = useRef(null);
   const startY = useRef(0);
@@ -32,10 +33,14 @@ const TokenTransactions = ({ pair, network }) => {
   const fetchTx = async () => {
     if (!pair?.pairAddress || !network) return;
     setLoading(true);
+    setError(null);
     try {
       const data = await getTrades(network, pair.pairAddress);
       setTransactions(data);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      if (transactions.length === 0) setError("Failed to load transactions. GeckoTerminal may be rate limiting.");
+    }
     finally { setLoading(false); }
   };
 
@@ -68,6 +73,12 @@ const TokenTransactions = ({ pair, network }) => {
 
   if (!pair) return <div className="p-4 text-center text-dex-text-secondary">No pair data available</div>;
   if (loading && transactions.length === 0) return <div className="p-4 text-center text-dex-text-secondary">Loading transactions...</div>;
+  if (error && transactions.length === 0) return (
+    <div className="p-4 text-center">
+      <div className="text-dex-text-secondary mb-2">{error}</div>
+      <button onClick={fetchTx} className="px-4 py-2 bg-dex-bg-tertiary hover:bg-dex-bg-highlight rounded-lg text-sm">Retry</button>
+    </div>
+  );
 
   return (
     <div className="flex flex-col w-full">

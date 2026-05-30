@@ -162,7 +162,7 @@ export function transformTrade(trade, baseTokenAddress) {
     totalValueUsd: parseFloat(a.volume_in_usd) || 0,
     baseTokenAmount: parseFloat(kind === "buy" ? a.to_token_amount : a.from_token_amount) || 0,
     quoteTokenAmount: parseFloat(kind === "buy" ? a.from_token_amount : a.to_token_amount) || 0,
-    baseTokenPriceUsd: parseFloat(a.price_from_in_usd) || 0,
+    baseTokenPriceUsd: parseFloat(kind === "buy" ? a.price_to_in_usd : a.price_from_in_usd) || 0,
     walletAddress: a.tx_from_address || "",
   };
 }

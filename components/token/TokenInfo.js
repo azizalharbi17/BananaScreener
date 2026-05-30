@@ -15,7 +15,14 @@ const TokenInfo = ({ token, pair, network }) => {
   useEffect(() => {
     if (!token?.address || !network) return;
     getTokenInfo(network, token.address).then(setTokenMetadata).catch(() => {});
-    getTokenDetails(network, token.address).then(setTokenDetails).catch(() => {});
+    const fetchDetails = (retries = 2) => {
+      getTokenDetails(network, token.address)
+        .then(setTokenDetails)
+        .catch(() => {
+          if (retries > 0) setTimeout(() => fetchDetails(retries - 1), 3000);
+        });
+    };
+    fetchDetails();
   }, [token, network]);
 
   const formatPrice = (p) => { if (!p) return "$0"; const n = typeof p === "string" ? parseFloat(p) : p; if (n < 0.00001) return "$" + n.toFixed(10).replace(/\.?0+$/, ""); if (n < 0.01) return "$" + n.toFixed(6); if (n < 1000) return "$" + n.toFixed(4); return "$" + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
