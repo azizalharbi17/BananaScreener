@@ -62,8 +62,12 @@ const SearchModal = ({ isOpen, onClose }) => {
         </div>
         <div className="overflow-y-auto max-h-[calc(80vh-70px)]">
           {searchTerm.trim() ? (
-            loading ? <div className="p-4 text-center text-dex-text-secondary">Searching...</div>
-              : <SearchResults results={results} onClose={onClose} />
+            loading ? (
+              <div className="p-8 flex flex-col items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-dex-blue mb-3"></div>
+                <div className="text-sm text-dex-text-secondary">Searching…</div>
+              </div>
+            ) : <SearchResults results={results} onClose={onClose} />
           ) : (
             <div>
               <div className="p-4 border-b border-dex-border">

@@ -1,4 +1,4 @@
-import { transformPool, transformPoolToPair, transformTrade } from "./gecko-transform";
+import { transformPool, transformPoolToPair, transformTrade, transformOHLCV } from "./gecko-transform";
 
 const API_BASE = "/api/gecko";
 

@@ -79,6 +79,12 @@ const TokenTransactions = ({ pair, network }) => {
       <button onClick={fetchTx} className="px-4 py-2 bg-dex-bg-tertiary hover:bg-dex-bg-highlight rounded-lg text-sm">Retry</button>
     </div>
   );
+  if (!loading && transactions.length === 0) return (
+    <div className="p-4 text-center">
+      <div className="text-dex-text-secondary mb-2">No transactions found for this pool</div>
+      <button onClick={fetchTx} className="px-4 py-2 bg-dex-bg-tertiary hover:bg-dex-bg-highlight rounded-lg text-sm">Refresh</button>
+    </div>
+  );
 
   return (
     <div className="flex flex-col w-full">
