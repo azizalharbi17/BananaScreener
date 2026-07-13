@@ -1,4 +1,5 @@
-import { gtFetch, GTError } from "@/lib/gtClient";
+import { serveCached } from "@/lib/serveCached";
+import { refreshTokenStats } from "@/lib/refreshers";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -7,11 +8,7 @@ export async function GET(request) {
 
   if (!network || !tokenAddress) return Response.json({ error: "Missing params" }, { status: 400 });
 
-  try {
-    const data = await gtFetch("token-info", `/networks/${encodeURIComponent(network)}/tokens/${encodeURIComponent(tokenAddress)}`);
-    return Response.json(data);
-  } catch (e) {
-    const status = e instanceof GTError && e.status === 429 ? 429 : 502;
-    return Response.json({ error: "Rate limited, please wait a moment and refresh" }, { status });
-  }
+  return serveCached("stats", { network, address: tokenAddress }, () =>
+    refreshTokenStats(network, tokenAddress)
+  );
 }

@@ -1,4 +1,5 @@
-import { gtFetch, GTError } from "@/lib/gtClient";
+import { serveCached } from "@/lib/serveCached";
+import { refreshTrades } from "@/lib/refreshers";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -7,11 +8,7 @@ export async function GET(request) {
 
   if (!network || !poolAddress) return Response.json({ error: "Missing params" }, { status: 400 });
 
-  try {
-    const data = await gtFetch("trades", `/networks/${encodeURIComponent(network)}/pools/${encodeURIComponent(poolAddress)}/trades`);
-    return Response.json(data);
-  } catch (e) {
-    const status = e instanceof GTError && e.status === 429 ? 429 : 502;
-    return Response.json({ error: "Rate limited, please wait a moment and refresh" }, { status });
-  }
+  return serveCached("trades", { network, pool_address: poolAddress }, () =>
+    refreshTrades(network, poolAddress)
+  );
 }

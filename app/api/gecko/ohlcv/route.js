@@ -1,4 +1,5 @@
-import { gtFetch, GTError } from "@/lib/gtClient";
+import { serveCached } from "@/lib/serveCached";
+import { refreshOHLCV } from "@/lib/refreshers";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -6,19 +7,14 @@ export async function GET(request) {
   const poolAddress = searchParams.get("poolAddress");
   const timeframe = searchParams.get("timeframe") || "hour";
   const aggregate = searchParams.get("aggregate") || "1";
-  const limit = searchParams.get("limit") || "100";
+  // The client "limit" param is intentionally ignored: candles are cached per
+  // (pool, timeframe, aggregate) at limit=300 and served as-is.
 
   if (!network || !poolAddress) return Response.json({ error: "Missing params" }, { status: 400 });
 
-  try {
-    const data = await gtFetch("ohlcv", `/networks/${encodeURIComponent(network)}/pools/${encodeURIComponent(poolAddress)}/ohlcv/${encodeURIComponent(timeframe)}`, {
-      aggregate,
-      limit,
-      currency: "usd",
-    });
-    return Response.json(data);
-  } catch (e) {
-    const status = e instanceof GTError && e.status === 429 ? 429 : 502;
-    return Response.json({ error: "Rate limited, please wait a moment and refresh" }, { status });
-  }
+  return serveCached(
+    "ohlcv",
+    { network, pool_address: poolAddress, timeframe, aggregate },
+    () => refreshOHLCV(network, poolAddress, timeframe, aggregate)
+  );
 }

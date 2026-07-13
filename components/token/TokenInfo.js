@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { getTokenInfo, getTokenDetails } from "@/utils/api";
 import { BLOCK_EXPLORERS } from "@/utils/networks";
+import UpdatedAgo from "@/components/common/UpdatedAgo";
 
 const timeFrameMap = { "5m": "5min", "1h": "1h", "4h": "4h", "24h": "24h" };
 
@@ -113,6 +114,7 @@ const TokenInfo = ({ token, pair, network }) => {
               <span className="text-sm text-dex-text-secondary ml-1">({details.symbol || tokenMetadata?.symbol || token.symbol})</span>
             </h1>
             <div className="text-sm text-dex-text-secondary">{pair.pairLabel} on {pair.exchangeName}</div>
+            <UpdatedAgo updatedAt={tokenMetadata?._updatedAt} />
           </div>
         </div>
 

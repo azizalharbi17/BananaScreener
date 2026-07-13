@@ -1,22 +1,13 @@
-import { gtFetch, GTError } from "@/lib/gtClient";
+import { serveCached } from "@/lib/serveCached";
+import { refreshSearch } from "@/lib/refreshers";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const query = searchParams.get("query") || "";
-  const page = searchParams.get("page") || "1";
+  const query = (searchParams.get("query") || "").trim();
+  const page = parseInt(searchParams.get("page") || "1", 10) || 1;
 
-  if (!query.trim()) return Response.json({ data: [], included: [] });
+  if (!query) return Response.json({ data: [], included: [] });
 
-  try {
-    // Do not normalize case: Solana addresses in queries are case-sensitive.
-    const data = await gtFetch("search", "/search/pools", {
-      query: query.trim(),
-      page,
-      include: "base_token,quote_token,dex",
-    });
-    return Response.json(data);
-  } catch (e) {
-    const status = e instanceof GTError && e.status === 429 ? 429 : 502;
-    return Response.json({ error: "Rate limited, please wait a moment and refresh" }, { status });
-  }
+  // Cache rows are keyed on the lowercased query (must match refreshSearch).
+  return serveCached("search", { query: query.toLowerCase(), page }, () => refreshSearch(query, page));
 }

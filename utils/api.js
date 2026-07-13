@@ -2,10 +2,17 @@ import { transformPool, transformPoolToPair, transformTrade, transformOHLCV } fr
 
 const API_BASE = "/api/gecko";
 
-async function fetchApi(path) {
-  const res = await fetch(`${API_BASE}${path}`);
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
-  return res.json();
+// Cold rows answer { _meta: { pending: true } } while the server's background
+// refresh lands — retry a few times before giving up so first-ever visits to
+// a token still render within a couple of seconds.
+async function fetchApi(path, { pendingRetries = 3, retryDelayMs = 2000 } = {}) {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${API_BASE}${path}`);
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    const json = await res.json();
+    if (!json?._meta?.pending || attempt >= pendingRetries) return json;
+    await new Promise((r) => setTimeout(r, retryDelayMs));
+  }
 }
 
 export async function getTrendingTokens(network = "", page = 1) {
@@ -53,7 +60,9 @@ export async function getTrades(network, poolAddress) {
 
 export async function getTokenInfo(network, tokenAddress) {
   const data = await fetchApi(`/token-info?network=${network}&tokenAddress=${tokenAddress}`);
-  return data.data?.attributes || null;
+  if (!data.data?.attributes) return null;
+  // _updatedAt feeds the "updated Xs ago" indicator on token pages.
+  return { ...data.data.attributes, _updatedAt: data._meta?.updatedAt || null };
 }
 
 export async function getTokenDetails(network, tokenAddress) {
