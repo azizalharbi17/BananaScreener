@@ -14,37 +14,53 @@ export async function GET(req) {
   // reset
   await supabase.from("trending_snapshots").update({ refresh_started_at: null }).match({ network: net, page });
 
-  // A: plain update + select (does UPDATE...RETURNING return rows under RLS at all?)
+  // Fix candidate 1: count:'exact' on the filtered update (no select of rows)
   {
-    const { data, error } = await supabase
+    const now = new Date().toISOString();
+    const { count, error } = await supabase
       .from("trending_snapshots")
-      .update({ refresh_started_at: new Date().toISOString() })
+      .update({ refresh_started_at: now }, { count: "exact" })
       .match({ network: net, page })
-      .select("network,page,refresh_started_at");
-    out.A_plainUpdateSelect = { rows: data?.length ?? null, error: error?.message || null };
+      .or(`refresh_started_at.is.null,refresh_started_at.lt.${cutoff}`);
+    out.fix1_count = { count: count ?? null, error: error?.message || null };
   }
 
   // reset
   await supabase.from("trending_snapshots").update({ refresh_started_at: null }).match({ network: net, page });
 
-  // B: update + match + or(is.null, lt.cutoff) + select  (the claimRefresh query)
+  // Fix candidate 2: read-after-write with unique marker time comparison
   {
-    const { data, error } = await supabase
+    const now = new Date().toISOString();
+    const { error: upErr } = await supabase
       .from("trending_snapshots")
-      .update({ refresh_started_at: new Date().toISOString() })
+      .update({ refresh_started_at: now })
       .match({ network: net, page })
-      .or(`refresh_started_at.is.null,refresh_started_at.lt.${cutoff}`)
-      .select("network,page,refresh_started_at");
-    out.B_claimQuery = { rows: data?.length ?? null, error: error?.message || null };
-  }
-
-  // C: did B actually modify the row? read raw
-  {
+      .or(`refresh_started_at.is.null,refresh_started_at.lt.${cutoff}`);
     const { data } = await supabase
       .from("trending_snapshots")
       .select("refresh_started_at")
-      .match({ network: net, page });
-    out.C_rowClaimAfterB = data?.[0]?.refresh_started_at ?? null;
+      .match({ network: net, page })
+      .maybeSingle();
+    const stored = data?.refresh_started_at;
+    const won = stored != null && Math.abs(new Date(stored).getTime() - new Date(now).getTime()) < 2;
+    out.fix2_readAfterWrite = { upErr: upErr?.message || null, wroteMarker: now, stored, won };
+  }
+
+  // second attempt should now LOSE (claim held fresh)
+  {
+    const now = new Date().toISOString();
+    await supabase
+      .from("trending_snapshots")
+      .update({ refresh_started_at: now })
+      .match({ network: net, page })
+      .or(`refresh_started_at.is.null,refresh_started_at.lt.${cutoff}`);
+    const { data } = await supabase
+      .from("trending_snapshots")
+      .select("refresh_started_at")
+      .match({ network: net, page })
+      .maybeSingle();
+    const won = data?.refresh_started_at != null && Math.abs(new Date(data.refresh_started_at).getTime() - new Date(now).getTime()) < 2;
+    out.fix2_secondAttemptShouldLose = { won };
   }
 
   return Response.json(out);
