@@ -174,8 +174,12 @@ export function transformTrade(trade, baseTokenAddress) {
 export function transformOHLCV(ohlcvList) {
   if (!ohlcvList || !ohlcvList.length) return { labels: [], ohlc: [], volumes: [] };
 
-  // OHLCV comes newest-first, reverse for chronological
-  const sorted = [...ohlcvList].reverse();
+  // OHLCV comes newest-first; sort chronological and drop duplicate
+  // timestamps (GT occasionally repeats a candle, which breaks chart libs
+  // that require strictly ascending times).
+  const byTime = new Map();
+  for (const c of ohlcvList) byTime.set(c[0], c);
+  const sorted = [...byTime.values()].sort((a, b) => a[0] - b[0]);
 
   return {
     labels: sorted.map((c) => new Date(c[0] * 1000)),
