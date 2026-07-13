@@ -1,8 +1,9 @@
-import { gtFetch } from "@/lib/gtClient";
-import { writeCached, readCached } from "@/lib/screenerStore";
+import { refreshTrending } from "@/lib/refreshers";
+import { readCached, claimRefresh } from "@/lib/screenerStore";
+import { supabase } from "@/lib/supabaseAdmin";
 
-// TEMPORARY diagnostic — replicates refreshTrending's real steps (gtFetch then
-// writeCached) to isolate which fails on production. Gated by CRON_SECRET.
+// TEMPORARY diagnostic — exercises the REAL refreshTrending after clearing the
+// claim, to see whether the claim/guarded wrapper is the blocker. Gated by CRON_SECRET.
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
@@ -16,28 +17,30 @@ export async function GET(req) {
   const net = "solana";
   const page = 1;
 
+  // 1. Clear the claim so refreshTrending can win it.
+  const { error: clrErr } = await supabase
+    .from("trending_snapshots")
+    .update({ refresh_started_at: null })
+    .match({ network: net, page });
+  out.clearClaim = clrErr ? { error: clrErr.message } : { ok: true };
+
+  // 2. Isolated claim test.
   try {
-    const snapshot = await gtFetch("trending", `/networks/${net}/trending_pools`, {
-      page: String(page),
-      include: "base_token,quote_token,dex",
-    });
-    out.fetch = { ok: true, pools: snapshot?.data?.length ?? null, bytes: JSON.stringify(snapshot).length };
-    try {
-      await writeCached("trending", { network: net, page }, snapshot);
-      out.write = { ok: true };
-    } catch (e) {
-      out.write = { ok: false, error: String(e?.message || e), stack: String(e?.stack || "").split("\n").slice(0, 5) };
-    }
+    out.claimReturns = await claimRefresh("trending", { network: net, page });
   } catch (e) {
-    out.fetch = { ok: false, error: String(e?.message || e), name: e?.name, status: e?.status };
+    out.claimReturns = { error: String(e?.message || e) };
   }
 
+  // 3. Clear again and run the real refreshTrending end-to-end.
+  await supabase.from("trending_snapshots").update({ refresh_started_at: null }).match({ network: net, page });
   try {
-    const row = await readCached("trending", { network: net, page });
-    out.rowAfter = { updatedAt: row?.updatedAt, ageMs: row?.ageMs };
+    const r = await refreshTrending(net, page);
+    out.refreshReturns = r === false ? false : { truthy: true, pools: r?.data?.length ?? null };
   } catch (e) {
-    out.rowAfter = { error: String(e?.message || e) };
+    out.refreshReturns = { error: String(e?.message || e), name: e?.name, status: e?.status, stack: String(e?.stack || "").split("\n").slice(0, 5) };
   }
 
+  const row = await readCached("trending", { network: net, page });
+  out.rowAfter = { updatedAt: row?.updatedAt, ageMs: row?.ageMs };
   return Response.json(out);
 }
