@@ -1,9 +1,5 @@
-import { refreshTrending } from "@/lib/refreshers";
-import { readCached, claimRefresh } from "@/lib/screenerStore";
 import { supabase } from "@/lib/supabaseAdmin";
 
-// TEMPORARY diagnostic — exercises the REAL refreshTrending after clearing the
-// claim, to see whether the claim/guarded wrapper is the blocker. Gated by CRON_SECRET.
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
@@ -12,35 +8,44 @@ export async function GET(req) {
   if (secret && req.headers.get("authorization") !== `Bearer ${secret}`) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
+  const net = "solana", page = 1, out = {};
+  const cutoff = new Date(Date.now() - 120000).toISOString();
 
-  const out = {};
-  const net = "solana";
-  const page = 1;
-
-  // 1. Clear the claim so refreshTrending can win it.
-  const { error: clrErr } = await supabase
-    .from("trending_snapshots")
-    .update({ refresh_started_at: null })
-    .match({ network: net, page });
-  out.clearClaim = clrErr ? { error: clrErr.message } : { ok: true };
-
-  // 2. Isolated claim test.
-  try {
-    out.claimReturns = await claimRefresh("trending", { network: net, page });
-  } catch (e) {
-    out.claimReturns = { error: String(e?.message || e) };
-  }
-
-  // 3. Clear again and run the real refreshTrending end-to-end.
+  // reset
   await supabase.from("trending_snapshots").update({ refresh_started_at: null }).match({ network: net, page });
-  try {
-    const r = await refreshTrending(net, page);
-    out.refreshReturns = r === false ? false : { truthy: true, pools: r?.data?.length ?? null };
-  } catch (e) {
-    out.refreshReturns = { error: String(e?.message || e), name: e?.name, status: e?.status, stack: String(e?.stack || "").split("\n").slice(0, 5) };
+
+  // A: plain update + select (does UPDATE...RETURNING return rows under RLS at all?)
+  {
+    const { data, error } = await supabase
+      .from("trending_snapshots")
+      .update({ refresh_started_at: new Date().toISOString() })
+      .match({ network: net, page })
+      .select("network,page,refresh_started_at");
+    out.A_plainUpdateSelect = { rows: data?.length ?? null, error: error?.message || null };
   }
 
-  const row = await readCached("trending", { network: net, page });
-  out.rowAfter = { updatedAt: row?.updatedAt, ageMs: row?.ageMs };
+  // reset
+  await supabase.from("trending_snapshots").update({ refresh_started_at: null }).match({ network: net, page });
+
+  // B: update + match + or(is.null, lt.cutoff) + select  (the claimRefresh query)
+  {
+    const { data, error } = await supabase
+      .from("trending_snapshots")
+      .update({ refresh_started_at: new Date().toISOString() })
+      .match({ network: net, page })
+      .or(`refresh_started_at.is.null,refresh_started_at.lt.${cutoff}`)
+      .select("network,page,refresh_started_at");
+    out.B_claimQuery = { rows: data?.length ?? null, error: error?.message || null };
+  }
+
+  // C: did B actually modify the row? read raw
+  {
+    const { data } = await supabase
+      .from("trending_snapshots")
+      .select("refresh_started_at")
+      .match({ network: net, page });
+    out.C_rowClaimAfterB = data?.[0]?.refresh_started_at ?? null;
+  }
+
   return Response.json(out);
 }
