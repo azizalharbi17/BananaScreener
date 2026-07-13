@@ -1,6 +1,4 @@
-import { cachedFetch } from "@/utils/cache";
-
-const GT = "https://api.geckoterminal.com/api/v2";
+import { gtFetch, GTError } from "@/lib/gtClient";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -9,12 +7,11 @@ export async function GET(request) {
 
   if (!network || !tokenAddress) return Response.json({ error: "Missing params" }, { status: 400 });
 
-  const url = `${GT}/networks/${network}/tokens/${tokenAddress}`;
-
   try {
-    const data = await cachedFetch(`token-info:${network}:${tokenAddress}`, url, 120000);
+    const data = await gtFetch("token-info", `/networks/${encodeURIComponent(network)}/tokens/${encodeURIComponent(tokenAddress)}`);
     return Response.json(data);
   } catch (e) {
-    return Response.json({ error: "Rate limited, please wait a moment and refresh" }, { status: 429 });
+    const status = e instanceof GTError && e.status === 429 ? 429 : 502;
+    return Response.json({ error: "Rate limited, please wait a moment and refresh" }, { status });
   }
 }
