@@ -13,6 +13,7 @@ export const PATH_TO_GT_NETWORK = {
   linea: "linea",
   pulse: "pulsechain",
   ronin: "ronin",
+  robinhood: "robinhood",
 };
 
 // GeckoTerminal network ID → URL path segment
@@ -29,6 +30,24 @@ export const GT_NETWORK_TO_PATH = {
   linea: "linea",
   pulsechain: "pulse",
   ronin: "ronin",
+  robinhood: "robinhood",
+};
+
+// GeckoTerminal network ID → human-readable chain name (breadcrumbs, badges)
+export const NETWORK_LABELS = {
+  solana: "Solana",
+  eth: "Ethereum",
+  bsc: "BSC",
+  polygon_pos: "Polygon",
+  arbitrum: "Arbitrum",
+  base: "Base",
+  optimism: "Optimism",
+  avax: "Avalanche",
+  fantom: "Fantom",
+  linea: "Linea",
+  pulsechain: "PulseChain",
+  ronin: "Ronin",
+  robinhood: "Robinhood",
 };
 
 // Hex chain IDs → GeckoTerminal network
@@ -61,4 +80,5 @@ export const BLOCK_EXPLORERS = {
   pulsechain: "https://scan.pulsechain.com",
   ronin: "https://app.roninchain.com",
   solana: "https://solscan.io",
+  robinhood: "https://robinhoodchain.blockscout.com",
 };

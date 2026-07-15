@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { getTokenInfo, getTokenDetails } from "@/utils/api";
 import { BLOCK_EXPLORERS } from "@/utils/networks";
 import UpdatedAgo from "@/components/common/UpdatedAgo";
+import ChainDexBreadcrumb from "@/components/common/ChainDexBreadcrumb";
 
 const timeFrameMap = { "5m": "5min", "1h": "1h", "4h": "4h", "24h": "24h" };
 
@@ -113,7 +114,10 @@ const TokenInfo = ({ token, pair, network }) => {
               {details.name || tokenMetadata?.name || token.name}
               <span className="text-sm text-dex-text-secondary ml-1">({details.symbol || tokenMetadata?.symbol || token.symbol})</span>
             </h1>
-            <div className="text-sm text-dex-text-secondary">{pair.pairLabel} on {pair.exchangeName}</div>
+            <div className="text-sm text-dex-text-secondary flex items-center flex-wrap gap-x-2">
+              <ChainDexBreadcrumb network={network} exchangeName={pair.exchangeName} className="text-sm" />
+              <span>· {pair.pairLabel}</span>
+            </div>
             <UpdatedAgo updatedAt={tokenMetadata?._updatedAt} />
           </div>
         </div>

@@ -9,12 +9,14 @@ const CHAINS = [
   { id: "0xa86a", name: "Avalanche", icon: "❄️" }, { id: "0xa", name: "Optimism", icon: "⚡" },
   { id: "0xe708", name: "Linea", icon: "📈" }, { id: "0xfa", name: "Fantom", icon: "👻" },
   { id: "0x171", name: "Pulse", icon: "💓" }, { id: "0x7e4", name: "Ronin", icon: "🦊" },
+  { id: "robinhood", name: "Robinhood", icon: "🪶" },
 ];
 
 const CHAIN_PATH_MAP = {
   solana: "solana", "0x1": "ethereum", "0x7e4": "ronin", "0x38": "binance",
   "0x2105": "base", "0xa4b1": "arbitrum", "0x89": "polygon", "0xa86a": "avalanche",
   "0xa": "optimism", "0xe708": "linea", "0xfa": "fantom", "0x171": "pulse",
+  robinhood: "robinhood",
 };
 
 const ChainSelector = () => {

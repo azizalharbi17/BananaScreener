@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 const TIME_BUDGET_MS = 45_000;
 const GT_PACE_MS = 1_200; // stay under GT's per-minute rate limit
-const NETWORKS = ["", "solana", "eth", "bsc", "base", "arbitrum", "polygon_pos", "avax", "optimism", "linea", "fantom", "pulsechain", "ronin"];
+const NETWORKS = ["", "solana", "eth", "bsc", "base", "robinhood", "arbitrum", "polygon_pos", "avax", "optimism", "linea", "fantom", "pulsechain", "ronin"];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

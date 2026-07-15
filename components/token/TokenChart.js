@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import TradingViewChart from "./TradingViewChart";
 import GeckoChart from "./GeckoChart";
+import ChainDexBreadcrumb from "@/components/common/ChainDexBreadcrumb";
 
 const TokenChart = ({ pair }) => {
   const [chartMode, setChartMode] = useState("tradingview");
@@ -46,7 +47,7 @@ const TokenChart = ({ pair }) => {
     <div className="h-full flex flex-col">
       <div className="flex items-center flex-wrap gap-2 mb-3">
         <span className="font-medium text-dex-text-primary">{pair.pairLabel}</span>
-        <span className="text-dex-text-secondary text-sm">on {pair.exchangeName}</span>
+        <ChainDexBreadcrumb network={pair.chainId} exchangeName={pair.exchangeName} className="text-sm" />
         <span className="text-dex-text-secondary text-sm">
           Vol: ${(pair.volume24hrUsd || 0).toLocaleString()} | Liq: ${(pair.liquidityUsd || 0).toLocaleString()}
         </span>

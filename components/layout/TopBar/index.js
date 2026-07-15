@@ -11,6 +11,7 @@ const TopBar = ({ chainId, sortBy, onSortChange }) => {
     { id: "bsc", name: "BSC", icon: "🟡" },
     { id: "arbitrum", name: "Arbitrum", icon: "🔵" },
     { id: "polygon", name: "Polygon", icon: "🟣" },
+    { id: "robinhood", name: "Robinhood", icon: "🪶" },
   ];
   const pages = [
     { id: "portfolio", name: "Portfolio", icon: "💼" },
