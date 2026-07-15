@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import SearchResults from "./searchResults";
 import { getTrendingTokens, searchTokens } from "@/utils/api";
 
@@ -8,7 +9,9 @@ const SearchModal = ({ isOpen, onClose }) => {
   const [results, setResults] = useState([]);
   const [trendingTokens, setTrendingTokens] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef(null);
+  const router = useRouter();
 
   useEffect(() => {
     getTrendingTokens()
@@ -18,10 +21,34 @@ const SearchModal = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (isOpen && inputRef.current) inputRef.current.focus();
+    if (isOpen) setActiveIndex(-1);
     const handleEscape = (e) => { if (e.key === "Escape") onClose(); };
     if (isOpen) document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
+
+  // Arrow-key navigation through the visible result list; Enter opens.
+  useEffect(() => {
+    if (!isOpen) return;
+    const list = searchTerm.trim() ? results : trendingTokens;
+    const handler = (e) => {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveIndex((i) => Math.min(i + 1, list.length - 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIndex((i) => Math.max(i - 1, -1));
+      } else if (e.key === "Enter") {
+        const t = list[activeIndex >= 0 ? activeIndex : 0];
+        if (t) {
+          router.push(`/${t.chainId}/${t.tokenAddress}`);
+          onClose();
+        }
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [isOpen, results, trendingTokens, searchTerm, activeIndex, onClose, router]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -49,7 +76,7 @@ const SearchModal = ({ isOpen, onClose }) => {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-dex-text-secondary mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <input ref={inputRef} type="text" placeholder="Search for tokens (e.g. ETH, TRUMP, PEPE)" className="bg-transparent w-full focus:outline-none text-dex-text-primary" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <input ref={inputRef} type="text" placeholder="Search for tokens (e.g. ETH, TRUMP, PEPE)" className="bg-transparent w-full focus:outline-none text-dex-text-primary" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setActiveIndex(-1); }} />
               {searchTerm && (
                 <button onClick={() => setSearchTerm("")} className="text-dex-text-secondary">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -67,14 +94,14 @@ const SearchModal = ({ isOpen, onClose }) => {
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-dex-blue mb-3"></div>
                 <div className="text-sm text-dex-text-secondary">Searching…</div>
               </div>
-            ) : <SearchResults results={results} onClose={onClose} />
+            ) : <SearchResults results={results} onClose={onClose} activeIndex={activeIndex} />
           ) : (
             <div>
               <div className="p-4 border-b border-dex-border">
                 <h3 className="text-dex-text-primary font-medium">Trending Tokens</h3>
                 <p className="text-dex-text-secondary text-sm">Popular tokens right now</p>
               </div>
-              <SearchResults results={trendingTokens} onClose={onClose} />
+              <SearchResults results={trendingTokens} onClose={onClose} activeIndex={activeIndex} />
             </div>
           )}
         </div>

@@ -131,18 +131,19 @@ export function transformPoolToPair(pool, included) {
       { tokenAddress: t.quoteToken.address, tokenName: t.quoteToken.name, tokenSymbol: t.quoteToken.symbol, tokenLogo: t.quoteToken.logo, tokenDecimals: String(t.quoteToken.decimals), pairTokenType: "token1", liquidityUsd: 0 },
     ],
     // Pair stats shape that TokenInfo expects
+    // GT buckets are m5/h1/h6/h24 — keys are labeled accordingly (the old
+    // "4h" key silently held 6-hour data).
+    lockedLiquidityPct: attrs.locked_liquidity_percentage != null ? parseFloat(attrs.locked_liquidity_percentage) : null,
     pairStats: {
       currentUsdPrice: parseFloat(attrs.base_token_price_usd) || 0,
       currentNativePrice: parseFloat(attrs.base_token_price_native_currency) || 0,
       totalLiquidityUsd: parseFloat(attrs.reserve_in_usd) || 0,
-      pricePercentChange: { "5min": parseFloat(pct.m5) || 0, "1h": parseFloat(pct.h1) || 0, "4h": parseFloat(pct.h6) || 0, "24h": parseFloat(pct.h24) || 0 },
-      buys: { "5min": txns.m5?.buys || 0, "1h": txns.h1?.buys || 0, "4h": txns.h6?.buys || 0, "24h": txns.h24?.buys || 0 },
-      sells: { "5min": txns.m5?.sells || 0, "1h": txns.h1?.sells || 0, "4h": txns.h6?.sells || 0, "24h": txns.h24?.sells || 0 },
-      buyVolume: { "5min": 0, "1h": 0, "4h": 0, "24h": 0 },
-      sellVolume: { "5min": 0, "1h": 0, "4h": 0, "24h": 0 },
-      totalVolume: { "5min": parseFloat(vol.m5) || 0, "1h": parseFloat(vol.h1) || 0, "4h": parseFloat(vol.h6) || 0, "24h": parseFloat(vol.h24) || 0 },
-      buyers: { "5min": txns.m5?.buyers || 0, "1h": txns.h1?.buyers || 0, "4h": txns.h6?.buyers || 0, "24h": txns.h24?.buyers || 0 },
-      sellers: { "5min": txns.m5?.sellers || 0, "1h": txns.h1?.sellers || 0, "4h": txns.h6?.sellers || 0, "24h": txns.h24?.sellers || 0 },
+      pricePercentChange: { "5m": parseFloat(pct.m5) || 0, "1h": parseFloat(pct.h1) || 0, "6h": parseFloat(pct.h6) || 0, "24h": parseFloat(pct.h24) || 0 },
+      buys: { "5m": txns.m5?.buys || 0, "1h": txns.h1?.buys || 0, "6h": txns.h6?.buys || 0, "24h": txns.h24?.buys || 0 },
+      sells: { "5m": txns.m5?.sells || 0, "1h": txns.h1?.sells || 0, "6h": txns.h6?.sells || 0, "24h": txns.h24?.sells || 0 },
+      totalVolume: { "5m": parseFloat(vol.m5) || 0, "1h": parseFloat(vol.h1) || 0, "6h": parseFloat(vol.h6) || 0, "24h": parseFloat(vol.h24) || 0 },
+      buyers: { "5m": txns.m5?.buyers || 0, "1h": txns.h1?.buyers || 0, "6h": txns.h6?.buyers || 0, "24h": txns.h24?.buyers || 0 },
+      sellers: { "5m": txns.m5?.sellers || 0, "1h": txns.h1?.sellers || 0, "6h": txns.h6?.sellers || 0, "24h": txns.h24?.sellers || 0 },
       pairCreated: attrs.pool_created_at || null,
     },
   };

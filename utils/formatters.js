@@ -1,5 +1,6 @@
 export const formatNumber = (num) => {
   if (!num) return "0";
+  if (num >= 1e12) return (num / 1e12).toFixed(1) + "T";
   if (num >= 1e9) return (num / 1e9).toFixed(1) + "B";
   if (num >= 1e6) return (num / 1e6).toFixed(1) + "M";
   if (num >= 1e3) return (num / 1e3).toFixed(1) + "K";
@@ -46,3 +47,19 @@ export const truncateAddress = (address, start = 6, end = 4) => {
   if (address.length <= start + end) return address;
   return `${address.slice(0, start)}...${address.slice(-end)}`;
 };
+
+// "$1.53M"-style compact USD (2 significant decimals under 10)
+export const formatUsdCompact = (v) => {
+  const n = typeof v === "string" ? parseFloat(v) : v;
+  if (!n && n !== 0) return "-";
+  const abs = Math.abs(n);
+  if (abs >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+  if (abs >= 1e3) return `$${(n / 1e3).toFixed(2)}K`;
+  if (abs >= 1) return `$${n.toFixed(2)}`;
+  return `$${n.toFixed(4)}`;
+};
+
+// Shared placeholder token logo (dark circle)
+export const PLACEHOLDER_LOGO =
+  "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjEwMCIgZmlsbD0iIzM0Mzk0NyIvPjwvc3ZnPg==";

@@ -3,6 +3,7 @@
 const TokenTabs = ({ activeTab, onChange }) => {
   const tabs = [
     { id: "transactions", label: "Transactions" },
+    { id: "holders", label: "Holders" },
     { id: "top-traders", label: "Top Traders" },
     { id: "bananamaps", label: "🍌 BananaMaps" },
   ];

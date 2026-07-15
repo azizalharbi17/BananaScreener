@@ -2,7 +2,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 
-const SearchResults = ({ results, onClose }) => {
+const SearchResults = ({ results, onClose, activeIndex = -1 }) => {
   const router = useRouter();
   const resultsList = Array.isArray(results) ? results : (results?.result || results?.data || []);
 
@@ -33,7 +33,9 @@ const SearchResults = ({ results, onClose }) => {
       {resultsList.map((token, index) => (
         <div
           key={`${token.chainId}-${token.tokenAddress}-${token.poolAddress || index}`}
-          className="p-4 hover:bg-dex-bg-highlight cursor-pointer border-b border-dex-border flex items-center"
+          data-search-result={index}
+          ref={index === activeIndex ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined}
+          className={`p-4 cursor-pointer border-b border-dex-border flex items-center ${index === activeIndex ? "bg-dex-bg-highlight" : "hover:bg-dex-bg-highlight"}`}
           onClick={() => handleTokenClick(token)}
         >
           <div className="flex items-center flex-1">
