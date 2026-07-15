@@ -5,6 +5,7 @@ import { BLOCK_EXPLORERS, NETWORK_LABELS } from "@/utils/networks";
 import { formatUsdCompact, formatNumber, PLACEHOLDER_LOGO, truncateAddress } from "@/utils/formatters";
 import UpdatedAgo from "@/components/common/UpdatedAgo";
 import GTScoreGauge from "@/components/token/GTScoreGauge";
+import { isBananaMapsSupported } from "@/utils/bananamaps";
 
 const TIMEFRAMES = ["5m", "1h", "6h", "24h"];
 const WATCHLIST_KEY = "bs:watchlist";
@@ -49,7 +50,7 @@ const SplitStat = ({ label, total, leftLabel, leftValue, rightLabel, rightValue,
   </div>
 );
 
-const TokenInfo = ({ token, pair, network }) => {
+const TokenInfo = ({ token, pair, network, onOpenMaps }) => {
   const [tokenMetadata, setTokenMetadata] = useState(null);
   const [tokenDetails, setTokenDetails] = useState(null);
   const [trades, setTrades] = useState([]);
@@ -142,6 +143,14 @@ const TokenInfo = ({ token, pair, network }) => {
   const holderCount = typeof details.holders === "object" ? details.holders?.count : details.holders;
   const categories = details.categories || [];
   const gtScore = typeof details.gt_score === "number" ? details.gt_score : parseFloat(details.gt_score);
+  // GT reports a placeholder gt_score of 100 for tokens it lacks data on
+  // (e.g. new chains return 100 while the breakdown says holders: 0). Only
+  // trust a perfect score when its own breakdown is perfect too.
+  const scoreParts = details.gt_score_details ? Object.values(details.gt_score_details) : [];
+  const scoreIsPlaceholder =
+    gtScore === 100 && !(scoreParts.length > 0 && scoreParts.every((v) => v === 100));
+  const hasScore = gtScore != null && !Number.isNaN(gtScore);
+  const mapsSupported = isBananaMapsSupported(network);
 
   const cleanDex = (() => {
     let d = pair.exchangeName || "";
@@ -287,9 +296,9 @@ const TokenInfo = ({ token, pair, network }) => {
       </div>
 
       {/* ── GT Score gauge + Holders ── */}
-      {(gtScore != null && !Number.isNaN(gtScore)) || holderCount ? (
+      {hasScore || holderCount ? (
         <div className="flex items-center justify-between p-3 border-b border-dex-border">
-          {gtScore != null && !Number.isNaN(gtScore) ? <GTScoreGauge score={gtScore} /> : <div />}
+          {hasScore ? <GTScoreGauge score={gtScore} na={scoreIsPlaceholder} /> : <div />}
           {holderCount ? (
             <div className="text-right">
               <div className="text-[10px] text-dex-text-secondary uppercase tracking-wider">Holders</div>
@@ -340,8 +349,8 @@ const TokenInfo = ({ token, pair, network }) => {
         ))}
       </div>
 
-      {/* ── Share / BananaMaps ── */}
-      <div className="p-3 grid grid-cols-2 gap-2">
+      {/* ── Share / BananaMaps (map button only where BananaMaps supports the chain) ── */}
+      <div className={`p-3 grid gap-2 ${mapsSupported && onOpenMaps ? "grid-cols-2" : "grid-cols-1"}`}>
         <a
           href={`https://twitter.com/intent/tweet?text=Check%20out%20${token.symbol}%20on%20BananaScreener&url=${typeof window !== "undefined" ? encodeURIComponent(window.location.href) : ""}`}
           target="_blank" rel="noopener noreferrer"
@@ -349,13 +358,14 @@ const TokenInfo = ({ token, pair, network }) => {
         >
           <span className="mr-1">🐦</span>Share on Twitter
         </a>
-        <a
-          href={`https://bananamaps.io/?token=${token.address}&chain=${network}`}
-          target="_blank" rel="noopener noreferrer"
-          className="flex justify-center items-center p-2 bg-dex-bg-tertiary hover:bg-dex-bg-highlight rounded-lg text-xs"
-        >
-          <span className="mr-1">🍌</span>BananaMaps
-        </a>
+        {mapsSupported && onOpenMaps && (
+          <button
+            onClick={onOpenMaps}
+            className="flex justify-center items-center p-2 bg-dex-bg-tertiary hover:bg-dex-bg-highlight rounded-lg text-xs"
+          >
+            <span className="mr-1">🍌</span>BananaMaps
+          </button>
+        )}
       </div>
     </div>
   );

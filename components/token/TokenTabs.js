@@ -1,15 +1,14 @@
 "use client";
 
-const TokenTabs = ({ activeTab, onChange }) => {
+const TokenTabs = ({ activeTab, onChange, onOpenMaps }) => {
   const tabs = [
     { id: "transactions", label: "Transactions" },
     { id: "holders", label: "Holders" },
     { id: "top-traders", label: "Top Traders" },
-    { id: "bananamaps", label: "🍌 BananaMaps" },
   ];
 
   return (
-    <div className="flex border-b border-dex-border">
+    <div className="flex items-center border-b border-dex-border">
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -23,6 +22,14 @@ const TokenTabs = ({ activeTab, onChange }) => {
           {tab.label}
         </button>
       ))}
+      {onOpenMaps && (
+        <button
+          onClick={onOpenMaps}
+          className="ml-auto mr-3 px-3 py-1.5 text-xs font-medium rounded-lg bg-dex-bg-tertiary border border-dex-border text-dex-text-primary hover:bg-dex-bg-highlight"
+        >
+          🍌 BananaMaps
+        </button>
+      )}
     </div>
   );
 };

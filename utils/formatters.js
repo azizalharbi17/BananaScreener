@@ -34,7 +34,7 @@ export const formatPercentChange = (value) => {
 
 export const getChainLogoPath = (chainId) => {
   const chainMap = { "0x1": "ethereum", solana: "solana", bsc: "binance", polygon: "polygon", arbitrum: "arbitrum", optimism: "optimism", base: "base" };
-  return `/images/chains/${chainMap[chainId] || "generic"}.svg`;
+  return `/chains/${chainMap[chainId] || "generic"}.svg`;
 };
 
 export const chainIdToPath = (chainId) => {

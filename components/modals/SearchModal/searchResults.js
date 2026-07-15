@@ -15,8 +15,14 @@ const SearchResults = ({ results, onClose, activeIndex = -1 }) => {
   };
 
   const getChainIcon = (chainId) => {
-    const chainMap = { ethereum: "ethereum", eth: "ethereum", solana: "solana", bsc: "binance", polygon: "polygon", polygon_pos: "polygon", base: "base", arbitrum: "arbitrum", optimism: "optimism", avax: "avalanche", fantom: "fantom" };
-    return `/images/chains/${chainMap[chainId] || "generic"}.svg`;
+    // Accepts URL-path ids (from transformPool) and raw GT network ids.
+    const chainMap = {
+      ethereum: "ethereum", eth: "ethereum", solana: "solana", bsc: "binance", binance: "binance",
+      polygon: "polygon", polygon_pos: "polygon", base: "base", arbitrum: "arbitrum",
+      optimism: "optimism", avax: "avalanche", avalanche: "avalanche", fantom: "fantom",
+      linea: "linea", pulse: "pulse", pulsechain: "pulse", ronin: "ronin", robinhood: "robinhood",
+    };
+    return `/chains/${chainMap[chainId] || "generic"}.svg`;
   };
 
   const handleTokenClick = (token) => {
@@ -46,7 +52,7 @@ const SearchResults = ({ results, onClose, activeIndex = -1 }) => {
                 className="w-10 h-10 rounded-full bg-dex-bg-tertiary"
                 onError={(e) => { e.target.onerror = null; e.target.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjEwMCIgZmlsbD0iIzU0NTQ1NCIvPjwvc3ZnPg=="; }}
               />
-              <img src={getChainIcon(token.chainId || token.network)} alt="Chain" className="absolute -right-1 -bottom-1 w-5 h-5 rounded-full border border-dex-border bg-dex-bg-secondary" onError={(e) => { e.target.src = "/images/chains/generic.svg"; }} />
+              <img src={getChainIcon(token.chainId || token.network)} alt="Chain" className="absolute -right-1 -bottom-1 w-5 h-5 rounded-full border border-dex-border bg-dex-bg-secondary" onError={(e) => { e.target.src = "/chains/generic.svg"; }} />
             </div>
             <div>
               <div className="font-medium flex items-center">

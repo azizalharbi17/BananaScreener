@@ -3,7 +3,9 @@ import { useState, useEffect, useRef } from "react";
 import { getTrades } from "@/utils/api";
 import { BLOCK_EXPLORERS } from "@/utils/networks";
 
-const TokenTransactions = ({ pair, network }) => {
+// compact: condensed mobile layout — 4 columns (age, USD, price, maker),
+// fills its parent's height instead of the desktop resizable panel.
+const TokenTransactions = ({ pair, network, compact = false }) => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newTxIds, setNewTxIds] = useState(new Set());
@@ -16,7 +18,7 @@ const TokenTransactions = ({ pair, network }) => {
 
   useEffect(() => {
     const el = resizeRef.current;
-    if (!el) return;
+    if (!el || compact) return;
     const down = (e) => { startY.current = e.clientY; startH.current = tableHeight; document.addEventListener("mousemove", move); document.addEventListener("mouseup", up); };
     const move = (e) => setTableHeight(Math.max(200, startH.current + (startY.current - e.clientY)));
     const up = () => { document.removeEventListener("mousemove", move); document.removeEventListener("mouseup", up); };
@@ -85,6 +87,41 @@ const TokenTransactions = ({ pair, network }) => {
       <button onClick={fetchTx} className="px-4 py-2 bg-dex-bg-tertiary hover:bg-dex-bg-highlight rounded-lg text-sm">Refresh</button>
     </div>
   );
+
+  if (compact) {
+    return (
+      <div className="h-full w-full overflow-y-auto bg-dex-bg-primary">
+        <table className="w-full text-xs text-left border-collapse table-fixed">
+          <thead className="text-[10px] uppercase bg-dex-bg-secondary text-dex-text-secondary sticky top-0 z-10">
+            <tr className="border-b border-dex-border">
+              <th className="px-2 py-2 w-[18%]">Age</th>
+              <th className="px-2 py-2 text-right w-[27%]">USD</th>
+              <th className="px-2 py-2 text-right w-[30%]">Price</th>
+              <th className="px-2 py-2 text-right w-[25%]">Maker</th>
+            </tr>
+          </thead>
+          <tbody>
+            {transactions.map((tx, i) => {
+              const tt = txType(tx.transactionType);
+              const isNew = newTxIds.has(tx.transactionHash);
+              return (
+                <tr key={`${tx.transactionHash}_${i}`} className={`border-b border-dex-border ${isNew ? "animate-slide-in bg-dex-bg-highlight" : ""}`}>
+                  <td className="px-2 py-2 text-dex-text-secondary whitespace-nowrap">{fmtTime(tx.blockTimestamp)}</td>
+                  <td className={`px-2 py-2 text-right font-medium whitespace-nowrap ${tt.color}`}>{tx.totalValueUsd ? "$" + fmtNum(tx.totalValueUsd, 2) : "-"}</td>
+                  <td className={`px-2 py-2 text-right whitespace-nowrap ${tt.color}`}>{fmtPrice(tx.baseTokenPriceUsd)}</td>
+                  <td className="px-2 py-2 text-right whitespace-nowrap">
+                    <a href={walletUrl(tx.walletAddress)} target="_blank" rel="noopener noreferrer" className="font-mono text-dex-text-secondary hover:text-dex-blue">
+                      {tx.walletAddress ? `${tx.walletAddress.slice(0, 4)}…${tx.walletAddress.slice(-3)}` : "-"}
+                    </a>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col w-full">

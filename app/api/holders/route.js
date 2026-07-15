@@ -1,9 +1,11 @@
 // Proxies the BananaMaps graph API (our own service) so the Holders tab
-// avoids CORS and keeps a single origin. BananaMaps supports sol/eth/bsc/base.
+// avoids CORS and keeps a single origin. Supported chains live in
+// utils/bananamaps.js (shared with every BananaMaps button/embed in the UI).
 // poll=1 is a pure cache probe on their side; wait=0 kicks off a background
 // build without holding the request open. No GeckoTerminal involvement.
+import { GT_TO_BANANAMAPS_CHAIN } from "@/utils/bananamaps";
+
 const BM_BASE = "https://www.bananamaps.io/api/graph";
-const GT_TO_BM_CHAIN = { solana: "sol", eth: "eth", bsc: "bsc", base: "base" };
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -13,7 +15,7 @@ export async function GET(request) {
 
   if (!network || !tokenAddress) return Response.json({ error: "Missing params" }, { status: 400 });
 
-  const chain = GT_TO_BM_CHAIN[network];
+  const chain = GT_TO_BANANAMAPS_CHAIN[network];
   if (!chain) return Response.json({ unsupported: true, chain: network });
 
   const params = mode === "poll" ? "poll=1" : "wait=0";

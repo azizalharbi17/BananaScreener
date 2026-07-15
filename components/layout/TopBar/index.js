@@ -3,23 +3,25 @@ import { useRouter } from "next/navigation";
 
 const TopBar = ({ chainId, sortBy, onSortChange }) => {
   const router = useRouter();
+  // logo = filename in /public/chains/; "All Chains" keeps the globe emoji
   const networks = [
     { id: "", name: "All Chains", icon: "🌐" },
-    { id: "solana", name: "Solana", icon: "🟣" },
-    { id: "ethereum", name: "Ethereum", icon: "🔷" },
-    { id: "base", name: "Base", icon: "🅱️" },
-    { id: "bsc", name: "BSC", icon: "🟡" },
-    { id: "arbitrum", name: "Arbitrum", icon: "🔵" },
-    { id: "polygon", name: "Polygon", icon: "🟣" },
-    { id: "robinhood", name: "Robinhood", icon: "🪶" },
+    { id: "solana", name: "Solana", logo: "solana" },
+    { id: "ethereum", name: "Ethereum", logo: "ethereum" },
+    { id: "base", name: "Base", logo: "base" },
+    { id: "bsc", name: "BSC", logo: "binance" },
+    { id: "arbitrum", name: "Arbitrum", logo: "arbitrum" },
+    { id: "polygon", name: "Polygon", logo: "polygon" },
+    { id: "robinhood", name: "Robinhood", logo: "robinhood" },
   ];
   const pages = [
     { id: "portfolio", name: "Portfolio", icon: "💼" },
     { id: "pumpfun", name: "Pump.fun", icon: "🚀" },
   ];
 
+  // top-14 on mobile: sits below MainLayout's h-14 sticky header
   return (
-    <div className="bg-dex-bg-secondary border-b border-dex-border p-4 sticky top-0 z-10">
+    <div className="bg-dex-bg-secondary border-b border-dex-border p-4 sticky top-14 md:top-0 z-10">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center flex-wrap gap-2">
           <div className="flex space-x-2">
@@ -33,7 +35,16 @@ const TopBar = ({ chainId, sortBy, onSortChange }) => {
                 }`}
                 onClick={() => router.push(`/${network.id}`)}
               >
-                <span className="mr-1">{network.icon}</span>
+                {network.logo ? (
+                  <img
+                    src={`/chains/${network.logo}.svg`}
+                    alt=""
+                    className="mr-1.5 w-4 h-4 rounded-full"
+                    onError={(e) => { e.target.onerror = null; e.target.src = "/chains/generic.svg"; }}
+                  />
+                ) : (
+                  <span className="mr-1">{network.icon}</span>
+                )}
                 {network.name}
               </button>
             ))}

@@ -1,33 +1,52 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import TradingViewChart from "./TradingViewChart";
 import GeckoChart from "./GeckoChart";
 import ChainDexBreadcrumb from "@/components/common/ChainDexBreadcrumb";
 
+// TradingView is always the primary chart. The OHLCV fallback renders only if
+// the TV widget errors / times out, or the symbol doesn't exist on TV at all
+// (very new tokens) — a successfully rendered TV chart is never replaced.
 const TokenChart = ({ pair }) => {
   const [chartMode, setChartMode] = useState("tradingview");
   const userToggledRef = useRef(false);
-  const timerRef = useRef(null);
+  const tvReadyRef = useRef(false);
 
-  // Auto-switch to GeckoChart after 4 seconds unless user manually toggled
+  const pairAddress = pair?.pairAddress;
+  const rawSymbol = pair?.pair?.[0]?.tokenSymbol || "BTC";
+  const cleanSymbol = rawSymbol.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  const tradingViewSymbol = cleanSymbol + "USD";
+
   useEffect(() => {
     userToggledRef.current = false;
+    tvReadyRef.current = false;
     setChartMode("tradingview");
 
-    timerRef.current = setTimeout(() => {
-      if (!userToggledRef.current) {
-        setChartMode("gecko");
-      }
-    }, 4000);
+    // Ask our proxy whether TV knows this symbol. exists:false → fall back
+    // immediately (the widget would only show "Invalid symbol", which the
+    // iframe-load check can't detect cross-origin). exists:null (proxy
+    // unavailable) → keep TV and let the widget timeout be the judge.
+    let cancelled = false;
+    fetch(`/api/tv-symbol?symbol=${encodeURIComponent(tradingViewSymbol)}`)
+      .then((res) => (res.ok ? res.json() : { exists: null }))
+      .then(({ exists }) => {
+        if (cancelled || userToggledRef.current) return;
+        if (exists === false) setChartMode("gecko");
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [pairAddress, tradingViewSymbol]);
 
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [pair?.pairAddress]);
+  const handleTvReady = useCallback(() => {
+    tvReadyRef.current = true;
+  }, []);
+
+  const handleTvFail = useCallback(() => {
+    if (!userToggledRef.current && !tvReadyRef.current) setChartMode("gecko");
+  }, []);
 
   const handleToggle = (mode) => {
     userToggledRef.current = true;
-    if (timerRef.current) clearTimeout(timerRef.current);
     setChartMode(mode);
   };
 
@@ -39,16 +58,12 @@ const TokenChart = ({ pair }) => {
     );
   }
 
-  const rawSymbol = pair.pair?.[0]?.tokenSymbol || "BTC";
-  const cleanSymbol = rawSymbol.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-  const tradingViewSymbol = cleanSymbol + "USD";
-
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col min-h-0">
       <div className="flex items-center flex-wrap gap-2 mb-3">
         <span className="font-medium text-dex-text-primary">{pair.pairLabel}</span>
         <ChainDexBreadcrumb network={pair.chainId} exchangeName={pair.exchangeName} className="text-sm" />
-        <span className="text-dex-text-secondary text-sm">
+        <span className="text-dex-text-secondary text-sm hidden sm:inline">
           Vol: ${(pair.volume24hrUsd || 0).toLocaleString()} | Liq: ${(pair.liquidityUsd || 0).toLocaleString()}
         </span>
         <div className="ml-auto flex gap-1">
@@ -74,9 +89,9 @@ const TokenChart = ({ pair }) => {
           </button>
         </div>
       </div>
-      <div className="flex-1 bg-dex-bg-secondary rounded-lg overflow-hidden">
+      <div className="flex-1 min-h-0 bg-dex-bg-secondary rounded-lg overflow-hidden">
         {chartMode === "tradingview" ? (
-          <TradingViewChart symbol={tradingViewSymbol} />
+          <TradingViewChart symbol={tradingViewSymbol} onReady={handleTvReady} onFail={handleTvFail} />
         ) : (
           <GeckoChart pair={pair} />
         )}

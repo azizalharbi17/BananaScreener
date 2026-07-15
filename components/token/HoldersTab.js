@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { BLOCK_EXPLORERS, NETWORK_LABELS } from "@/utils/networks";
 import { formatNumber, formatUsdCompact, truncateAddress } from "@/utils/formatters";
+import { GT_TO_BANANAMAPS_CHAIN, bananaMapsAppUrl } from "@/utils/bananamaps";
 
 // Top-150 holders from the BananaMaps holder graph — with cluster membership,
 // which plain address lists (DexScreener) don't show.
@@ -73,12 +74,16 @@ const HoldersTab = ({ token, network }) => {
   const walletUrl = (addr) =>
     !explorer ? "#" : network === "solana" ? `${explorer}/account/${addr}` : `${explorer}/address/${addr}`;
 
-  if (state.status === "unsupported")
+  if (state.status === "unsupported") {
+    const supported = Object.keys(GT_TO_BANANAMAPS_CHAIN)
+      .map((n) => NETWORK_LABELS[n] || n)
+      .join(", ");
     return (
       <div className="p-10 text-center text-dex-text-secondary text-sm">
-        Holder maps aren't available for {NETWORK_LABELS[network] || network} yet — BananaMaps covers Solana, Ethereum, BSC and Base.
+        Holder maps aren't available for {NETWORK_LABELS[network] || network} yet — BananaMaps covers {supported}.
       </div>
     );
+  }
 
   if (state.status === "loading" || state.status === "building")
     return (
@@ -94,7 +99,7 @@ const HoldersTab = ({ token, network }) => {
     return (
       <div className="p-10 text-center text-dex-text-secondary text-sm">
         Holder data isn't ready yet — check back in a minute, or view the map on{" "}
-        <a className="text-dex-blue hover:underline" href={`https://bananamaps.io/?token=${token.address}&chain=${network}`} target="_blank" rel="noopener noreferrer">BananaMaps</a>.
+        <a className="text-dex-blue hover:underline" href={bananaMapsAppUrl(network, token.address) || "https://www.bananamaps.io"} target="_blank" rel="noopener noreferrer">BananaMaps</a>.
       </div>
     );
 

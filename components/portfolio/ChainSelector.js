@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState, useEffect } from "react";
 
-const getChainIcon = (id) => { const m = { eth: "ethereum", bsc: "binance", polygon: "polygon", base: "base", arbitrum: "arbitrum", optimism: "optimism", avalanche: "avalanche", fantom: "fantom", linea: "linea", pulse: "pulse", ronin: "ronin" }; return `/images/chains/${m[id] || "generic"}.svg`; };
+const getChainIcon = (id) => { const m = { eth: "ethereum", bsc: "binance", polygon: "polygon", base: "base", arbitrum: "arbitrum", optimism: "optimism", avalanche: "avalanche", fantom: "fantom", linea: "linea", pulse: "pulse", ronin: "ronin" }; return `/chains/${m[id] || "generic"}.svg`; };
 const fmt = (v) => { if (!v) return "$0.00"; const n = parseFloat(v); if (n >= 1e6) return `$${(n/1e6).toFixed(2)}M`; if (n >= 1e3) return `$${(n/1e3).toFixed(2)}K`; return `$${n.toFixed(2)}`; };
 const chainNames = { eth: "Ethereum", bsc: "BSC", polygon: "Polygon", arbitrum: "Arbitrum", avalanche: "Avalanche", optimism: "Optimism", base: "Base", fantom: "Fantom" };
 

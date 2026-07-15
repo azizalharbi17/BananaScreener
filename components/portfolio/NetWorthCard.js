@@ -1,6 +1,6 @@
 "use client";
 
-const getChainIcon = (id) => { const m = { eth: "ethereum", bsc: "binance", polygon: "polygon", base: "base", arbitrum: "arbitrum", optimism: "optimism", avalanche: "avalanche", fantom: "fantom", linea: "linea", pulse: "pulse", ronin: "ronin" }; return `/images/chains/${m[id] || "generic"}.svg`; };
+const getChainIcon = (id) => { const m = { eth: "ethereum", bsc: "binance", polygon: "polygon", base: "base", arbitrum: "arbitrum", optimism: "optimism", avalanche: "avalanche", fantom: "fantom", linea: "linea", pulse: "pulse", ronin: "ronin" }; return `/chains/${m[id] || "generic"}.svg`; };
 const getChainColor = (id) => ({ eth: "#627EEA", bsc: "#F3BA2F", polygon: "#8247E5", arbitrum: "#28A0F0", avalanche: "#E84142", optimism: "#FF0420", base: "#0052FF", fantom: "#1969FF" }[id] || "#888");
 const fmt = (v) => { if (!v) return "$0.00"; const n = parseFloat(v); if (n >= 1e6) return `$${(n/1e6).toFixed(2)}M`; if (n >= 1e3) return `$${(n/1e3).toFixed(2)}K`; return `$${n.toFixed(2)}`; };
 

@@ -9,10 +9,13 @@ import TokenTabs from "@/components/token/TokenTabs";
 import PairSelector from "@/components/token/PairSelector";
 import TokenTransactions from "@/components/token/TokenTransactions";
 import TopTraders from "@/components/token/TopTraders";
-import BananaMapsTab from "@/components/token/BananaMapsTab";
+import BananaMapsSheet from "@/components/token/BananaMapsSheet";
 import HoldersTab from "@/components/token/HoldersTab";
+import MobileTabBar from "@/components/token/MobileTabBar";
+import useIsMobile from "@/components/common/useIsMobile";
 import { getTokenPools } from "@/utils/api";
 import { PATH_TO_GT_NETWORK } from "@/utils/networks";
+import { isBananaMapsSupported } from "@/utils/bananamaps";
 
 export default function TokenPage() {
   const { chainId: chainPath, tokenAddress } = useParams();
@@ -22,9 +25,14 @@ export default function TokenPage() {
   const [pairs, setPairs] = useState([]);
   const [selectedPair, setSelectedPair] = useState(null);
   const [activeTab, setActiveTab] = useState("transactions");
+  const [mobileTab, setMobileTab] = useState("combo"); // info | combo | chart | txns
+  const [mapsOpen, setMapsOpen] = useState(false);
   const [error, setError] = useState(null);
+  const isMobile = useIsMobile();
 
   const network = PATH_TO_GT_NETWORK[chainPath] || chainPath;
+  const mapsSupported = isBananaMapsSupported(network);
+  const openMaps = mapsSupported ? () => setMapsOpen(true) : undefined;
 
   useEffect(() => {
     setLoadingState("initial");
@@ -87,45 +95,96 @@ export default function TokenPage() {
 
   return (
     <MainLayout openSearchModal={() => setSearchModalOpen(true)}>
-      <div className="flex flex-col h-full bg-dex-bg-primary">
-        <div className="flex flex-col lg:flex-row h-[70vh]">
-          <div className="flex-1 p-4">
-            <TokenChart pair={selectedPair} />
+      {isMobile ? (
+        /* ── Mobile: fixed-height app shell, bottom tab bar, zero horizontal
+           scroll. All three panes stay mounted (class-toggled) so switching
+           tabs never reloads the TV widget or restarts trade polling. ── */
+        <div className="flex flex-col h-[calc(100vh-3.5rem)] supports-[height:100dvh]:h-[calc(100dvh-3.5rem)] overflow-hidden bg-dex-bg-primary">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <div
+              className={
+                mobileTab === "chart"
+                  ? "flex-1 min-h-0 p-2"
+                  : mobileTab === "combo"
+                    ? "h-[45%] shrink-0 p-2 pb-0"
+                    : "hidden"
+              }
+            >
+              <TokenChart pair={selectedPair} />
+            </div>
+            <div
+              className={
+                mobileTab === "txns" || mobileTab === "combo"
+                  ? "flex-1 min-h-0 flex flex-col border-t border-dex-border"
+                  : "hidden"
+              }
+            >
+              <TokenTransactions pair={selectedPair} network={network} compact />
+            </div>
+            <div className={mobileTab === "info" ? "flex-1 min-h-0 overflow-y-auto" : "hidden"}>
+              {pairs.length > 1 && (
+                <div className="border-b border-dex-border p-3">
+                  <PairSelector
+                    pairs={pairs}
+                    selectedPair={selectedPair}
+                    onSelect={(addr) => {
+                      const p = pairs.find((p) => p.pairAddress === addr);
+                      if (p) setSelectedPair(p);
+                    }}
+                  />
+                </div>
+              )}
+              <TokenInfo token={tokenInfo} pair={selectedPair} network={network} onOpenMaps={openMaps} />
+            </div>
           </div>
-          <div className="w-full lg:w-80 xl:w-96 border-l border-dex-border overflow-y-auto">
-            {pairs.length > 1 && (
-              <div className="border-b border-dex-border p-4">
-                <PairSelector
-                  pairs={pairs}
-                  selectedPair={selectedPair}
-                  onSelect={(addr) => {
-                    const p = pairs.find((p) => p.pairAddress === addr);
-                    if (p) setSelectedPair(p);
-                  }}
-                />
-              </div>
+          <MobileTabBar active={mobileTab} onChange={setMobileTab} />
+        </div>
+      ) : (
+        /* ── Desktop: unchanged layout ── */
+        <div className="flex flex-col h-full bg-dex-bg-primary">
+          <div className="flex flex-col lg:flex-row h-[70vh]">
+            <div className="flex-1 p-4">
+              <TokenChart pair={selectedPair} />
+            </div>
+            <div className="w-full lg:w-80 xl:w-96 border-l border-dex-border overflow-y-auto">
+              {pairs.length > 1 && (
+                <div className="border-b border-dex-border p-4">
+                  <PairSelector
+                    pairs={pairs}
+                    selectedPair={selectedPair}
+                    onSelect={(addr) => {
+                      const p = pairs.find((p) => p.pairAddress === addr);
+                      if (p) setSelectedPair(p);
+                    }}
+                  />
+                </div>
+              )}
+              <TokenInfo token={tokenInfo} pair={selectedPair} network={network} onOpenMaps={openMaps} />
+            </div>
+          </div>
+          <div className="border-t border-dex-border">
+            <TokenTabs activeTab={activeTab} onChange={setActiveTab} onOpenMaps={openMaps} />
+          </div>
+          <div className="flex-1 overflow-auto">
+            {activeTab === "transactions" && (
+              <TokenTransactions pair={selectedPair} network={network} />
             )}
-            <TokenInfo token={tokenInfo} pair={selectedPair} network={network} />
+            {activeTab === "holders" && (
+              <HoldersTab token={tokenInfo} network={network} />
+            )}
+            {activeTab === "top-traders" && (
+              <TopTraders pair={selectedPair} network={network} />
+            )}
           </div>
         </div>
-        <div className="border-t border-dex-border">
-          <TokenTabs activeTab={activeTab} onChange={setActiveTab} />
-        </div>
-        <div className="flex-1 overflow-auto">
-          {activeTab === "transactions" && (
-            <TokenTransactions pair={selectedPair} network={network} />
-          )}
-          {activeTab === "holders" && (
-            <HoldersTab token={tokenInfo} network={network} />
-          )}
-          {activeTab === "top-traders" && (
-            <TopTraders pair={selectedPair} network={network} />
-          )}
-          {activeTab === "bananamaps" && (
-            <BananaMapsTab token={tokenInfo} network={network} />
-          )}
-        </div>
-      </div>
+      )}
+      <BananaMapsSheet
+        open={mapsOpen}
+        onClose={() => setMapsOpen(false)}
+        token={tokenInfo}
+        network={network}
+        disableEscape={isSearchModalOpen}
+      />
       <SearchModal isOpen={isSearchModalOpen} onClose={() => setSearchModalOpen(false)} />
     </MainLayout>
   );
