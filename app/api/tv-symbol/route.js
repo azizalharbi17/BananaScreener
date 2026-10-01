@@ -1,11 +1,20 @@
-// Checks whether a symbol (e.g. "PEPEUSD") exists on TradingView, so the
-// token page can skip the TV widget entirely for tokens TV has never heard of
-// (very new tokens) instead of rendering an "Invalid symbol" chart.
+// Verifies that TradingView lists THIS token — not merely its ticker — so the
+// token page can offer TradingView's centralized-exchange chart as an opt-in
+// secondary view. Callers must already have checked that the token has a
+// CoinGecko coin id (the primary gate); this is the second gate.
 //
-// Failure policy: on any upstream problem return { exists: null } — the client
-// treats "unknown" as "assume it exists" and relies on the widget's own
-// load-timeout fallback, so this route can never take TV charts down.
+// Returns:
+//   { match: true, symbol: "EXCHANGE:SYMBOL", description, exchange }
+//   { match: false }  — TradingView has no instrument whose base asset is this token
+//   { match: null }   — the lookup itself failed; callers must NOT offer TradingView
+//
+// The old version answered { exists } for a bare ticker. In production it said
+// exists:true for every ticker tried, and the matches were other coins, so the
+// OHLCV chart almost never showed and some tokens rendered an unrelated chart.
+import { pickTradingViewSymbol } from "@/lib/tvSymbolMatch";
+
 const cache = new Map(); // per-instance; CDN caching via s-maxage does the real work
+const MAX_CACHE_ENTRIES = 1000;
 
 const SEARCH_URL = "https://symbol-search.tradingview.com/symbol_search/v3/";
 const BROWSER_HEADERS = {
@@ -14,22 +23,26 @@ const BROWSER_HEADERS = {
   Origin: "https://www.tradingview.com",
   Referer: "https://www.tradingview.com/",
 };
+const LONG_CACHE = { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=86400" };
+const SHORT_CACHE = { "Cache-Control": "public, s-maxage=300" };
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const symbol = (searchParams.get("symbol") || "").toUpperCase();
-  if (!symbol) return Response.json({ error: "Missing symbol" }, { status: 400 });
-
-  const cached = cache.get(symbol);
-  if (cached) {
-    return Response.json(cached, {
-      headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=86400" },
-    });
+  const ticker = (searchParams.get("ticker") || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  const name = (searchParams.get("name") || "").trim();
+  const coinId = (searchParams.get("coinId") || "").trim();
+  if (!ticker || !coinId) {
+    return Response.json({ error: "ticker and coinId are required" }, { status: 400 });
   }
 
+  const key = `${ticker}|${coinId.toLowerCase()}|${name.toLowerCase()}`;
+  const cached = cache.get(key);
+  if (cached) return Response.json(cached, { headers: LONG_CACHE });
+
   try {
+    // Search by bare ticker and let the matcher insist on exact symbol + name.
     const params = new URLSearchParams({
-      text: symbol,
+      text: ticker,
       search_type: "crypto",
       lang: "en",
       domain: "production",
@@ -37,24 +50,16 @@ export async function GET(request) {
     });
     const res = await fetch(`${SEARCH_URL}?${params}`, {
       headers: BROWSER_HEADERS,
+      cache: "no-store",
       signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) throw new Error(`TV search ${res.status}`);
     const data = await res.json();
-    // With hl=1 TV wraps matches in <em> tags; strip any markup defensively.
-    const stripTags = (s) => (s || "").replace(/<[^>]*>/g, "");
-    const exists = (data.symbols || []).some(
-      (s) => stripTags(s.symbol).toUpperCase() === symbol
-    );
-    const payload = { exists };
-    cache.set(symbol, payload);
-    return Response.json(payload, {
-      headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=86400" },
-    });
+    const payload = pickTradingViewSymbol(data.symbols || [], { ticker, name, coinId });
+    if (cache.size >= MAX_CACHE_ENTRIES) cache.delete(cache.keys().next().value);
+    cache.set(key, payload);
+    return Response.json(payload, { headers: LONG_CACHE });
   } catch {
-    return Response.json(
-      { exists: null },
-      { headers: { "Cache-Control": "public, s-maxage=300" } }
-    );
+    return Response.json({ match: null }, { headers: SHORT_CACHE });
   }
 }

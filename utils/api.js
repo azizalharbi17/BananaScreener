@@ -56,10 +56,21 @@ export async function getPoolInfo(network, poolAddress) {
   return data.data ? transformPoolToPair(data.data, included) : null;
 }
 
-export async function getOHLCV(network, poolAddress, timeframe = "hour", aggregate = "1", limit = "100") {
-  const data = await fetchApi(`/ohlcv?network=${network}&poolAddress=${poolAddress}&timeframe=${timeframe}&aggregate=${aggregate}&limit=${limit}`);
+// Pool candles. `pending` is surfaced (instead of swallowed as an empty list)
+// so the chart can keep polling a cold pool rather than dead-ending; the
+// chart drives its own retry cadence, hence pendingRetries defaults to 0 here.
+export async function getOHLCV(network, poolAddress, timeframe = "hour", aggregate = "1", { pendingRetries = 0 } = {}) {
+  const data = await fetchApi(
+    `/ohlcv?network=${network}&poolAddress=${poolAddress}&timeframe=${timeframe}&aggregate=${aggregate}`,
+    { pendingRetries }
+  );
   const list = data.data?.attributes?.ohlcv_list || [];
-  return transformOHLCV(list);
+  return {
+    ...transformOHLCV(list),
+    pending: Boolean(data._meta?.pending),
+    notFound: Boolean(data.notFound),
+    updatedAt: data._meta?.updatedAt || null,
+  };
 }
 
 export async function getTrades(network, poolAddress) {
@@ -78,4 +89,19 @@ export async function getTokenInfo(network, tokenAddress) {
 export async function getTokenDetails(network, tokenAddress) {
   const data = await fetchApi(`/token-details?network=${network}&tokenAddress=${tokenAddress}`);
   return data.data?.attributes || null;
+}
+
+// TradingView is offered only for tokens TradingView verifiably lists (see
+// app/api/tv-symbol). Returns { match: true|false|null, symbol?, description?,
+// exchange? }. null means the lookup failed — callers must not offer TradingView.
+export async function resolveTradingViewSymbol({ ticker, name, coinId }) {
+  if (!ticker || !coinId) return { match: false };
+  try {
+    const params = new URLSearchParams({ ticker, name: name || "", coinId });
+    const res = await fetch(`/api/tv-symbol?${params}`);
+    if (!res.ok) return { match: null };
+    return await res.json();
+  } catch {
+    return { match: null };
+  }
 }

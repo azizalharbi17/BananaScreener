@@ -1,6 +1,10 @@
 "use client";
 import React, { useEffect, useRef, memo } from 'react';
 
+// Opt-in CEX chart. Only mounted when TokenChart has verified that TradingView
+// lists this token (CoinGecko coin id + base-asset name match); `symbol` is the
+// verified "EXCHANGE:SYMBOL", never a bare ticker. The pool chart is primary.
+//
 // How long the embed script gets to produce a loaded iframe before we declare
 // the widget dead (network issue, adblocker, TV outage).
 const LOAD_TIMEOUT_MS = 8000;
@@ -37,7 +41,7 @@ function TradingViewChart({ symbol = "BTCUSD", onReady, onFail }) {
         "hide_legend": false,
         "hide_volume": false,
         "hotlist": false,
-        "interval": "D",
+        "interval": "15",
         "locale": "en",
         "save_image": true,
         "style": "1",
