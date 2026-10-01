@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getOHLCV } from "@/utils/api";
 import UpdatedAgo from "@/components/common/UpdatedAgo";
+import { formatUsdPrice, usdPriceDecimals, formatUsdAxis } from "@/utils/formatters";
 
 // Pool (DEX) candle chart — the primary chart on every token page, every chain.
 // Data: GeckoTerminal OHLCV for this exact pool, served from our cache.
@@ -11,6 +12,10 @@ import UpdatedAgo from "@/components/common/UpdatedAgo";
 // Never dead-ends: a cold pool (cache row still pending) retries fast, a quiet
 // pool (no candles yet at this resolution) and a failed fetch keep polling at
 // the normal cadence. Resolution defaults to 15m and remembers the last choice.
+//
+// Unit: candles are the base token's USD price (lib/refreshers.js requests
+// currency=usd), and the price axis is formatted in dollars at a precision that
+// fits the token, so the axis reads "$0.004762" like the panel — not "0.00".
 const TIMEFRAMES = [
   { label: "1m", timeframe: "minute", aggregate: "1" },
   { label: "5m", timeframe: "minute", aggregate: "5" },
@@ -75,12 +80,14 @@ const GeckoChart = ({ pair }) => {
   const barsRef = useRef([]); // merged candles, ascending by time
   const fittedRef = useRef(false); // fitContent only on the first paint per pool/resolution
   const chartTypeRef = useRef("candles");
+  const decimalsRef = useRef(null); // current axis precision, re-derived from the last close
 
   const [tf, setTf] = useState(null); // resolved after mount (localStorage) to avoid SSR mismatch
   const [chartType, setChartType] = useState("candles"); // "candles" | "line"
   // loading | pending | ready | empty | unknown | error — overlays only show while no bars exist
   const [status, setStatus] = useState("loading");
   const [updatedAt, setUpdatedAt] = useState(null);
+  const [lastClose, setLastClose] = useState(null); // last candle close (USD), shown in the toolbar
   chartTypeRef.current = chartType;
 
   const network = pair?.chainId;
@@ -102,11 +109,32 @@ const GeckoChart = ({ pair }) => {
     } catch {}
   };
 
+  // Dollar axis with token-appropriate precision (mirrors the panel's formatter
+  // so axis == panel). lightweight-charts' default 2-decimal price format is
+  // what made $0.004762 read as "0.00" / "0.01".
+  const applyPriceFormat = () => {
+    const s = seriesRef.current;
+    const bars = barsRef.current;
+    if (!s || !bars.length) return;
+    const d = usdPriceDecimals(bars[bars.length - 1].close);
+    if (d === decimalsRef.current) return;
+    decimalsRef.current = d;
+    s.applyOptions({
+      priceFormat: { type: "custom", minMove: 10 ** -d, formatter: (p) => formatUsdAxis(p, d) },
+    });
+  };
+
+  const noteLastClose = () => {
+    const bars = barsRef.current;
+    setLastClose(bars.length ? bars[bars.length - 1].close : null);
+  };
+
   const paintAll = (fit) => {
     const s = seriesRef.current;
     const v = volumeRef.current;
     if (!s || !v) return;
     const bars = barsRef.current;
+    applyPriceFormat();
     s.setData(bars.map((b) => toSeriesBar(b, chartTypeRef.current)));
     v.setData(bars.map(toVolumeBar));
     if (fit) {
@@ -124,6 +152,7 @@ const GeckoChart = ({ pair }) => {
     if (!prev.length) {
       barsRef.current = bars;
       paintAll(true);
+      noteLastClose();
       return;
     }
     const lastTime = prev[prev.length - 1].time;
@@ -131,14 +160,17 @@ const GeckoChart = ({ pair }) => {
       // Gap (tab slept past the whole window): repaint without refitting.
       barsRef.current = bars;
       paintAll(false);
+      noteLastClose();
       return;
     }
     const tail = bars.filter((b) => b.time >= lastTime);
     if (!tail.length) return;
     barsRef.current = [...prev.filter((b) => b.time < lastTime), ...tail];
+    noteLastClose();
     const s = seriesRef.current;
     const v = volumeRef.current;
     if (!s || !v) return;
+    applyPriceFormat();
     for (const b of tail) {
       s.update(toSeriesBar(b, chartTypeRef.current));
       v.update(toVolumeBar(b));
@@ -165,6 +197,7 @@ const GeckoChart = ({ pair }) => {
         priceScaleId: "volume",
       });
       chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+      decimalsRef.current = null; // new series: re-apply the dollar price format
       if (barsRef.current.length) paintAll(!fittedRef.current);
     })();
     return () => {
@@ -195,6 +228,7 @@ const GeckoChart = ({ pair }) => {
     volumeRef.current?.setData([]);
     setStatus("loading");
     setUpdatedAt(null);
+    setLastClose(null);
 
     const schedule = (ms) => {
       if (!cancelled) timer = setTimeout(tick, ms);
@@ -276,6 +310,12 @@ const GeckoChart = ({ pair }) => {
           ))}
         </div>
         <div className="flex items-center gap-2">
+          {lastClose != null && (
+            <span className="flex items-baseline gap-1" title="Last candle close, in USD">
+              <span className="text-xs font-semibold text-dex-text-primary" data-testid="pool-chart-last">{formatUsdPrice(lastClose)}</span>
+              <span className="text-[10px] text-dex-text-tertiary">USD</span>
+            </span>
+          )}
           <span className="hidden sm:flex items-center gap-1.5 text-[10px] text-dex-text-tertiary" title="Pool candles from GeckoTerminal, refreshed automatically" data-testid="pool-chart-live" data-live={status === "ready" ? "1" : "0"}>
             <span className={`inline-block w-1.5 h-1.5 rounded-full ${status === "ready" ? "bg-dex-green" : "bg-dex-text-tertiary"}`} />
             {status === "ready" ? "live" : "pool chart"}

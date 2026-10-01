@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { getTokenInfo, getTokenDetails, getTrades } from "@/utils/api";
 import { BLOCK_EXPLORERS, NETWORK_LABELS } from "@/utils/networks";
-import { formatUsdCompact, formatNumber, PLACEHOLDER_LOGO, truncateAddress } from "@/utils/formatters";
+import { formatUsdCompact, formatUsdPrice, formatNumber, PLACEHOLDER_LOGO, truncateAddress } from "@/utils/formatters";
 import UpdatedAgo from "@/components/common/UpdatedAgo";
 import GTScoreGauge from "@/components/token/GTScoreGauge";
 import { isBananaMapsSupported } from "@/utils/bananamaps";
@@ -112,25 +112,16 @@ const TokenInfo = ({ token, pair, network, onOpenMaps }) => {
     return `${exp}/${type === "token" ? "token" : "address"}/${address}`;
   };
 
-  const formatPrice = (p) => {
-    if (!p) return "$0";
-    const n = typeof p === "string" ? parseFloat(p) : p;
-    if (n < 0.00001) return "$" + n.toFixed(10).replace(/\.?0+$/, "");
-    if (n < 0.01) return "$" + n.toFixed(6);
-    if (n < 1000) return "$" + n.toFixed(4);
-    return "$" + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  };
   const formatPct = (v) => ((!v && v !== 0) ? "-" : (v >= 0 ? "+" : "") + v.toFixed(2) + "%");
 
   if (!token || !pair) return <div className="p-4 text-dex-text-secondary">No token data available</div>;
 
   const pairStats = pair.pairStats || {};
   const usdPrice = pairStats.currentUsdPrice || pair.usdPrice || 0;
-  const nativePrice = pairStats.currentNativePrice || pair.nativePrice || 0;
+  const h24 = pairStats.pricePercentChange?.["24h"] || 0;
   const totalLiquidity = pairStats.totalLiquidityUsd || pair.liquidityUsd || 0;
   const fdv = tokenMetadata?.fdv_usd || 0;
   const mktCap = tokenMetadata?.market_cap_usd || fdv;
-  const quoteSymbol = pair.pair?.[1]?.tokenSymbol || "USD";
   const chainLabel = NETWORK_LABELS[network] || network;
 
   const details = tokenDetails || {};
@@ -209,7 +200,7 @@ const TokenInfo = ({ token, pair, network, onOpenMaps }) => {
             <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
               <span className="px-1.5 py-0.5 text-[11px] font-medium rounded bg-dex-blue/15 text-dex-blue border border-dex-blue/30">{chainLabel}</span>
               <span className="px-1.5 py-0.5 text-[11px] font-medium rounded bg-dex-bg-tertiary text-dex-text-secondary border border-dex-border">{cleanDex}</span>
-              <span className="text-xs text-dex-text-secondary">{pair.pairLabel}</span>
+              <span className="text-xs text-dex-text-tertiary" title="Liquidity pool this page reads from. Every price shown is in USD." data-testid="panel-pool-label">pool {pair.pairLabel}</span>
             </div>
             <div className="mt-1">
               <UpdatedAgo updatedAt={tokenMetadata?._updatedAt} />
@@ -226,15 +217,15 @@ const TokenInfo = ({ token, pair, network, onOpenMaps }) => {
         </div>
       </div>
 
-      {/* ── Price ── */}
-      <div className="grid grid-cols-2 border-b border-dex-border">
-        <div className="p-3 border-r border-dex-border">
+      {/* ── Price: USD only. The pool's quote-token price (SOL/WETH/...) is
+          deliberately not shown — every figure on this page is in dollars. ── */}
+      <div className="flex items-end justify-between p-3 border-b border-dex-border">
+        <div>
           <div className="text-[10px] text-dex-text-secondary uppercase tracking-wider">Price USD</div>
-          <div className="text-base font-bold mt-0.5">{formatPrice(usdPrice)}</div>
+          <div className="text-xl font-bold mt-0.5" data-testid="panel-price-usd">{formatUsdPrice(usdPrice)}</div>
         </div>
-        <div className="p-3">
-          <div className="text-[10px] text-dex-text-secondary uppercase tracking-wider">Price {quoteSymbol}</div>
-          <div className="text-base font-bold mt-0.5">{formatPrice(nativePrice).replace("$", "")}</div>
+        <div className={`text-sm font-semibold ${h24 >= 0 ? "text-dex-green" : "text-dex-red"}`} title="24h price change">
+          {formatPct(h24)} <span className="text-[10px] font-normal text-dex-text-secondary">24h</span>
         </div>
       </div>
 

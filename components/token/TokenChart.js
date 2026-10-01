@@ -84,14 +84,17 @@ const TokenChart = ({ pair }) => {
     );
   }
 
+  const baseSymbol = base?.tokenSymbol || "Token";
   const tvAvailable = tv.status === "available";
   const showingTv = chartMode === "tv" && tvAvailable;
 
   return (
     <div className="h-full flex flex-col min-h-0">
       <div className="flex items-center flex-wrap gap-2 mb-3">
-        <span className="font-medium text-dex-text-primary">{pair.pairLabel}</span>
+        {/* Headline unit is USD on every chain; the pool is context, not the price unit. */}
+        <span className="font-medium text-dex-text-primary" data-testid="chart-headline">{baseSymbol} / USD</span>
         <ChainDexBreadcrumb network={pair.chainId} exchangeName={pair.exchangeName} className="text-sm" />
+        <span className="text-xs text-dex-text-tertiary" title="Liquidity pool the candles come from. Candles are the token's USD price." data-testid="chart-pool-label">pool {pair.pairLabel}</span>
         <span className="text-dex-text-secondary text-sm hidden sm:inline">
           Vol: ${(pair.volume24hrUsd || 0).toLocaleString()} | Liq: ${(pair.liquidityUsd || 0).toLocaleString()}
         </span>
