@@ -3,14 +3,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 // logo = filename in /public/chains/
+// Display order only (Robinhood sits second, under Solana, to match the TopBar pills).
 const CHAINS = [
-  { id: "solana", name: "Solana", logo: "solana" }, { id: "0x1", name: "Ethereum", logo: "ethereum" },
-  { id: "0x38", name: "BSC", logo: "binance" }, { id: "0x2105", name: "Base", logo: "base" },
-  { id: "0xa4b1", name: "Arbitrum", logo: "arbitrum" }, { id: "0x89", name: "Polygon", logo: "polygon" },
-  { id: "0xa86a", name: "Avalanche", logo: "avalanche" }, { id: "0xa", name: "Optimism", logo: "optimism" },
-  { id: "0xe708", name: "Linea", logo: "linea" }, { id: "0xfa", name: "Fantom", logo: "fantom" },
-  { id: "0x171", name: "Pulse", logo: "pulse" }, { id: "0x7e4", name: "Ronin", logo: "ronin" },
-  { id: "robinhood", name: "Robinhood", logo: "robinhood" },
+  { id: "solana", name: "Solana", logo: "solana" }, { id: "robinhood", name: "Robinhood", logo: "robinhood" },
+  { id: "0x1", name: "Ethereum", logo: "ethereum" }, { id: "0x38", name: "BSC", logo: "binance" },
+  { id: "0x2105", name: "Base", logo: "base" }, { id: "0xa4b1", name: "Arbitrum", logo: "arbitrum" },
+  { id: "0x89", name: "Polygon", logo: "polygon" }, { id: "0xa86a", name: "Avalanche", logo: "avalanche" },
+  { id: "0xa", name: "Optimism", logo: "optimism" }, { id: "0xe708", name: "Linea", logo: "linea" },
+  { id: "0xfa", name: "Fantom", logo: "fantom" }, { id: "0x171", name: "Pulse", logo: "pulse" },
+  { id: "0x7e4", name: "Ronin", logo: "ronin" },
 ];
 
 const CHAIN_PATH_MAP = {

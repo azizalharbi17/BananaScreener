@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState, useCallback, useMemo } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import TableHeader from "./TableHeader";
 import TokenRow, { ROW_HEIGHT } from "./TokenRow";
@@ -9,6 +9,10 @@ import { NETWORK_LABELS } from "@/utils/networks";
 // Windowed rendering: only rows near the viewport are mounted, so 200+ row
 // lists stay smooth. Fixed row height + spacer rows keep scrollbar geometry.
 const OVERSCAN = 8;
+// Infinite scroll: a sentinel at the end of the list is watched inside the
+// scroll container; the next page starts loading this many px before the end
+// so scrolling never catches up with an empty bottom.
+const PREFETCH_PX = 400;
 
 const SkeletonRows = ({ count = 12 }) =>
   Array.from({ length: count }, (_, i) => (
@@ -27,6 +31,20 @@ const SkeletonRows = ({ count = 12 }) =>
         <td key={j} className="px-4"><div className="h-3 w-12 bg-dex-bg-tertiary rounded animate-pulse ml-auto" /></td>
       ))}
     </tr>
+  ));
+
+const MobileSkeletonCards = ({ count = 8 }) =>
+  Array.from({ length: count }, (_, i) => (
+    <div key={i} className="p-3 border-b border-dex-border">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-full bg-dex-bg-tertiary animate-pulse" />
+        <div className="flex-1 space-y-1.5">
+          <div className="h-3 w-28 bg-dex-bg-tertiary rounded animate-pulse" />
+          <div className="h-2.5 w-20 bg-dex-bg-tertiary rounded animate-pulse" />
+        </div>
+        <div className="h-4 w-16 bg-dex-bg-tertiary rounded animate-pulse" />
+      </div>
+    </div>
   ));
 
 const MobileCard = ({ token, onClick }) => {
@@ -67,9 +85,14 @@ const MobileCard = ({ token, onClick }) => {
   );
 };
 
-const TrendingTable = ({ tokens, loading, sortBy, sortDirection, onSortChange }) => {
+const TrendingTable = ({
+  tokens, loading, sortBy, sortDirection, onSortChange,
+  // Infinite scroll (optional): omit onLoadMore for a plain, non-paged list.
+  hasMore = false, loadingMore = false, loadError = false, onLoadMore, onRetry,
+}) => {
   const router = useRouter();
   const scrollRef = useRef(null);
+  const sentinelRef = useRef(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportH, setViewportH] = useState(800);
 
@@ -77,6 +100,31 @@ const TrendingTable = ({ tokens, loading, sortBy, sortDirection, onSortChange })
     setScrollTop(e.currentTarget.scrollTop);
     setViewportH(e.currentTarget.clientHeight);
   }, []);
+
+  // A fresh page 1 (chain or sort change) starts back at the top.
+  useEffect(() => {
+    if (!loading || !scrollRef.current) return;
+    scrollRef.current.scrollTop = 0;
+    setScrollTop(0);
+  }, [loading]);
+
+  // Watch the sentinel inside the list's own scroll container (not the page),
+  // so it works whether the page or the inner area is what scrolls. The
+  // observer is only armed while a load can actually start — never while one
+  // is in flight — and is rebuilt after every page lands, which re-checks the
+  // sentinel: on a tall viewport the list keeps filling until it overflows.
+  const canLoadMore = Boolean(onLoadMore) && !loading && !loadingMore && hasMore && !loadError && tokens.length > 0;
+  useEffect(() => {
+    const root = scrollRef.current;
+    const target = sentinelRef.current;
+    if (!canLoadMore || !root || !target || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries.some((entry) => entry.isIntersecting)) onLoadMore(); },
+      { root, rootMargin: `0px 0px ${PREFETCH_PX}px 0px`, threshold: 0 }
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [canLoadMore, onLoadMore, tokens.length]);
 
   const sortedTokens = useMemo(() => {
     const arr = Array.isArray(tokens) ? [...tokens] : [];
@@ -115,6 +163,7 @@ const TrendingTable = ({ tokens, loading, sortBy, sortDirection, onSortChange })
                 <TokenRow key={token.id || start + i} token={token} rank={start + i + 1} />
               ))}
               {bottomPad > 0 && <tr style={{ height: bottomPad }} aria-hidden />}
+              {loadingMore && <SkeletonRows count={3} />}
             </>
           )}
         </tbody>
@@ -123,29 +172,41 @@ const TrendingTable = ({ tokens, loading, sortBy, sortDirection, onSortChange })
       {/* Mobile cards */}
       <div className="md:hidden">
         {loading ? (
-          Array.from({ length: 8 }, (_, i) => (
-            <div key={i} className="p-3 border-b border-dex-border">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-dex-bg-tertiary animate-pulse" />
-                <div className="flex-1 space-y-1.5">
-                  <div className="h-3 w-28 bg-dex-bg-tertiary rounded animate-pulse" />
-                  <div className="h-2.5 w-20 bg-dex-bg-tertiary rounded animate-pulse" />
-                </div>
-                <div className="h-4 w-16 bg-dex-bg-tertiary rounded animate-pulse" />
-              </div>
-            </div>
-          ))
+          <MobileSkeletonCards />
         ) : total === 0 ? (
           <div className="text-center py-16 text-dex-text-secondary">
             <div className="text-3xl mb-2">🍌</div>
             No tokens found
           </div>
         ) : (
-          sortedTokens.map((token) => (
-            <MobileCard key={token.id} token={token} onClick={() => router.push(`/${token.chainId}/${token.tokenAddress}`)} />
-          ))
+          <>
+            {sortedTokens.map((token) => (
+              <MobileCard key={token.id} token={token} onClick={() => router.push(`/${token.chainId}/${token.tokenAddress}`)} />
+            ))}
+            {loadingMore && <MobileSkeletonCards count={2} />}
+          </>
         )}
       </div>
+
+      {/* Infinite-scroll footer: sentinel while more may come, then a quiet end state */}
+      {onLoadMore && !loading && total > 0 && (
+        <div className="text-center text-xs text-dex-text-tertiary">
+          {hasMore && !loadError && <div ref={sentinelRef} aria-hidden className="h-px" />}
+          {loadingMore && (
+            <div className="flex items-center justify-center gap-2 py-3" role="status" aria-live="polite">
+              <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-dex-blue" />
+              Loading more tokens…
+            </div>
+          )}
+          {loadError && (
+            <div className="py-6">
+              Couldn&apos;t load more tokens.{" "}
+              <button onClick={onRetry} className="text-dex-blue hover:underline">Retry</button>
+            </div>
+          )}
+          {!hasMore && <div className="py-6">You&apos;ve reached the end · {total} tokens</div>}
+        </div>
+      )}
     </div>
   );
 };

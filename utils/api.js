@@ -15,14 +15,24 @@ async function fetchApi(path, { pendingRetries = 3, retryDelayMs = 2000 } = {}) 
   }
 }
 
-export async function getTrendingTokens(network = "", page = 1) {
+// One page of the trending feed plus the cache's status for it. Infinite
+// scroll needs to tell "this page is still warming" (retry shortly) apart from
+// "there are no more pages" (stop) — both come back with zero pools.
+export async function getTrendingPage(network = "", page = 1) {
   const params = new URLSearchParams();
   if (network) params.set("network", network);
   params.set("page", String(page));
   const data = await fetchApi(`/trending?${params}`);
   const pools = data.data || [];
   const included = data.included || [];
-  return pools.map((pool) => transformPool(pool, included));
+  return {
+    tokens: pools.map((pool) => transformPool(pool, included)),
+    pending: Boolean(data._meta?.pending),
+  };
+}
+
+export async function getTrendingTokens(network = "", page = 1) {
+  return (await getTrendingPage(network, page)).tokens;
 }
 
 export async function searchTokens(query) {

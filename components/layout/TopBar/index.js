@@ -7,12 +7,12 @@ const TopBar = ({ chainId, sortBy, onSortChange }) => {
   const networks = [
     { id: "", name: "All Chains", icon: "🌐" },
     { id: "solana", name: "Solana", logo: "solana" },
+    { id: "robinhood", name: "Robinhood", logo: "robinhood" },
     { id: "ethereum", name: "Ethereum", logo: "ethereum" },
     { id: "base", name: "Base", logo: "base" },
     { id: "bsc", name: "BSC", logo: "binance" },
     { id: "arbitrum", name: "Arbitrum", logo: "arbitrum" },
     { id: "polygon", name: "Polygon", logo: "polygon" },
-    { id: "robinhood", name: "Robinhood", logo: "robinhood" },
   ];
   const pages = [
     { id: "portfolio", name: "Portfolio", icon: "💼" },
