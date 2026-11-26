@@ -50,13 +50,16 @@ const TokenTransactions = ({ pair, network, compact = false }) => {
     if (!pair?.pairAddress || !network) return;
     try {
       const data = await getTrades(network, pair.pairAddress);
-      const existing = new Set(transactions.map((tx) => tx.transactionHash));
-      const newOnes = data.filter((tx) => !existing.has(tx.transactionHash));
-      if (newOnes.length > 0) {
-        setNewTxIds(new Set(newOnes.map((tx) => tx.transactionHash)));
-        setTransactions((prev) => [...newOnes, ...prev]);
+      // dedupe against prev inside the updater: `transactions` here is a
+      // stale closure from mount, so it can't be used as the seen-set
+      setTransactions((prev) => {
+        const seen = new Set(prev.map((tx) => tx.transactionHash));
+        const fresh = data.filter((tx) => !seen.has(tx.transactionHash));
+        if (fresh.length === 0) return prev;
+        setNewTxIds(new Set(fresh.map((tx) => tx.transactionHash)));
         setTimeout(() => setNewTxIds(new Set()), 5000);
-      }
+        return [...fresh, ...prev].slice(0, 500);
+      });
     } catch (e) {}
   };
 
